@@ -131,7 +131,7 @@ Skills are stored locally in:
 
 ```
 ~/.config/skill-cli/
-├── skills.json          # metadata: name, url, installed_at, updated_at
+├── skills.json          # metadata: name, description, raw_url, installed_at, updated_at
 └── skills/
     ├── grill-me.md
     └── caveman.md

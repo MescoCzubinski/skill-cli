@@ -3,26 +3,37 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/mieszko/skill-cli/cmd"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("usage: skill-cli <command> [args]")
-		fmt.Println("commands: add, list, remove, update")
+		printUsage()
 		os.Exit(1)
 	}
 
 	switch os.Args[1] {
 	case "add":
-		fmt.Println("add: not implemented")
+		cmd.Add(os.Args[2:])
 	case "list":
-		fmt.Println("list: not implemented")
+		cmd.List(os.Args[2:])
 	case "remove":
-		fmt.Println("remove: not implemented")
+		cmd.Remove(os.Args[2:])
 	case "update":
-		fmt.Println("update: not implemented")
+		cmd.Update(os.Args[2:])
+	case "remote":
+		fmt.Println("remote: not implemented yet")
+	case "sync":
+		fmt.Println("sync: not implemented yet")
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
+		printUsage()
 		os.Exit(1)
 	}
+}
+
+func printUsage() {
+	fmt.Println("usage: skill-cli <command> [args]")
+	fmt.Println("commands: add, list, remove, update, remote, sync")
 }

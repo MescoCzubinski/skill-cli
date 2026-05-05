@@ -1,7 +1,30 @@
 package cmd
 
-import "fmt"
+import (
+	"fmt"
+	"os"
 
-func List(args []string) {
-	fmt.Println("list:", args)
+	"github.com/mieszko/skill-cli/skill"
+)
+
+func List(_ []string) {
+	skills, err := skill.LoadAll()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	if len(skills) == 0 {
+		fmt.Println("no skills installed")
+		return
+	}
+
+	fmt.Printf("%-16s %-45s %s\n", "NAME", "DESCRIPTION", "UPDATED")
+	for _, s := range skills {
+		desc := s.Description
+		if len(desc) > 42 {
+			desc = desc[:42] + "..."
+		}
+		fmt.Printf("%-16s %-45s %s\n", s.Name, desc, s.UpdatedAt)
+	}
 }
