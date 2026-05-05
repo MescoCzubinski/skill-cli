@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mieszko/skill-cli/skill"
+	"github.com/mieszko/skill-cli/core"
 )
 
 func Update(args []string) {
@@ -14,38 +14,70 @@ func Update(args []string) {
 		os.Exit(1)
 	}
 
-	skills, err := skill.LoadAll()
+	today := time.Now().Format("2006-01-02")
+	if args[0] == "--all" {
+		updateAll(today)
+	} else {
+		updateSingle(args[0], today)
+	}
+}
+
+func updateAll(today string) {
+	skills, err := core.GetSkillsMeta()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	today := time.Now().Format("2006-01-02")
-
-	if args[0] == "--all" {
-		for i := range skills {
-			if err := skills[i].FetchSkill(today); err != nil {
-				fmt.Fprintf(os.Stderr, "update %s: %v\n", skills[i].Name, err)
-				os.Exit(1)
-			}
-			fmt.Printf("updated: %s\n", skills[i].Name)
-		}
-	} else {
-		name := args[0]
-		i, _ := skill.FindByName(skills, name)
-		if i == -1 {
-			fmt.Fprintf(os.Stderr, "skill %q not found\n", name)
+	for i := range skills {
+		description, err := updateSkill(&skills[i], today)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "update %s: %v\n", skills[i].Name, err)
 			os.Exit(1)
 		}
-		if err := skills[i].FetchSkill(today); err != nil {
-			fmt.Fprintf(os.Stderr, "update %s: %v\n", name, err)
-			os.Exit(1)
-		}
-		fmt.Printf("updated: %s\n", name)
+		skills[i].Description = description
+		skills[i].UpdatedAt = today
+		fmt.Printf("updated: %s\n", skills[i].Name)
 	}
 
-	if err := skill.SaveAll(skills); err != nil {
+	err = core.SaveSkillsMeta(skills)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func updateSingle(name, today string) {
+	skill, err := core.FindSkillMeta(name)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if skill == nil {
+		fmt.Fprintf(os.Stderr, "skill %q not found\n", name)
+		os.Exit(1)
+	}
+
+	description, err := updateSkill(skill, today)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "update %s: %v\n", name, err)
+		os.Exit(1)
+	}
+
+	err = core.UpdateSkillMeta(name, description, today)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("updated: %s\n", name)
+}
+
+func updateSkill(s *core.Skill, today string) (description string, err error) {
+	_, description, content, err := core.FetchSkill(s.RawURL)
+	if err != nil {
+		return
+	}
+	err = core.SaveSkillFile(s.Name, content)
+	return
 }

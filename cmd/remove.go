@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mieszko/skill-cli/skill"
+	"github.com/mieszko/skill-cli/core"
 )
 
 func Remove(args []string) {
@@ -14,20 +14,24 @@ func Remove(args []string) {
 	}
 
 	name := args[0]
-	skills, err := skill.LoadAll()
+	skill, err := core.FindSkillMeta(name)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if skill == nil {
+		fmt.Fprintf(os.Stderr, "skill %q not found\n", name)
+		os.Exit(1)
+	}
+
+	err = core.RemoveSkillFile(name)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	i, _ := skill.FindByName(skills, name)
-	if i == -1 {
-		fmt.Fprintf(os.Stderr, "skill %q not found\n", name)
-		os.Exit(1)
-	}
-
-	skills = append(skills[:i], skills[i+1:]...)
-	if err := skill.SaveAll(skills); err != nil {
+	err = core.RemoveSkillMeta(name)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

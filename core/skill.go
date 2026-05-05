@@ -1,4 +1,4 @@
-package skill
+package core
 
 type Skill struct {
     Name        string `json:"name"`

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mieszko/skill-cli/skill"
+	"github.com/mieszko/skill-cli/core"
 )
 
 func List(_ []string) {
-	skills, err := skill.LoadAll()
+	skills, err := core.GetSkillsMeta()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
