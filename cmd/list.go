@@ -13,7 +13,6 @@ func List(_ []string) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-
 	if len(skills) == 0 {
 		fmt.Println("no skills installed")
 		return

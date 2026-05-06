@@ -6,15 +6,6 @@ import (
 	"strings"
 )
 
-var deployTargets = []string{
-	".claude/skills",
-	".cursor/skills",
-	".gemini/skills",
-	".gemini/antigravity/skills",
-	".opencode/skills",
-	".codex/skills",
-}
-
 func SaveSkillFile(name, content string) error {
 	dir := filepath.Join(SkillsDir(), name)
 	err := os.MkdirAll(dir, 0755)
@@ -32,14 +23,12 @@ func SaveSkillFile(name, content string) error {
 	if err != nil {
 		return err
 	}
-
 	for _, target := range deployTargets {
 		assistantDir := filepath.Join(home, strings.SplitN(target, "/", 2)[0])
 		_, err = os.Stat(assistantDir)
 		if os.IsNotExist(err) {
 			continue
 		}
-
 		skillDir := filepath.Join(home, target, name)
 		err = os.MkdirAll(skillDir, 0755)
 		if err != nil {
@@ -67,5 +56,6 @@ func RemoveSkillFile(name string) error {
 	for _, target := range deployTargets {
 		os.RemoveAll(filepath.Join(home, target, name))
 	}
+
 	return nil
 }

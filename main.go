@@ -23,9 +23,9 @@ func main() {
 	case "update":
 		cmd.Update(os.Args[2:])
 	case "remote":
-		fmt.Println("remote: not implemented yet")
+		cmd.Remote(os.Args[2:])
 	case "sync":
-		fmt.Println("sync: not implemented yet")
+		cmd.Sync(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		printUsage()
@@ -35,5 +35,5 @@ func main() {
 
 func printUsage() {
 	fmt.Println("usage: skill-cli <command> [args]")
-	fmt.Println("commands: add, list, remove, update, remote, sync")
+	fmt.Println("commands: add, list, remove, update, update --all, sync, remote add|clear")
 }

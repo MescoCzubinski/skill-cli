@@ -14,13 +14,9 @@ func Remove(args []string) {
 	}
 
 	name := args[0]
-	skill, err := core.FindSkillMeta(name)
+	_, err := core.FindSkillMeta(name)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	if skill == nil {
-		fmt.Fprintf(os.Stderr, "skill %q not found\n", name)
 		os.Exit(1)
 	}
 

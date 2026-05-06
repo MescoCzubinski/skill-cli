@@ -2,11 +2,14 @@ package core
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 )
+
+var ErrSkillNotFound = errors.New("skill not found")
 
 func ConfigDir() string {
 	base, err := os.UserConfigDir()
@@ -38,6 +41,7 @@ func GetSkillsMeta() ([]Skill, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return skills, nil
 }
 
@@ -52,6 +56,7 @@ func SaveSkillsMeta(skills []Skill) error {
 	if err != nil {
 		return err
 	}
+
 	return os.WriteFile(jsonPath(), data, 0644)
 }
 
@@ -69,10 +74,12 @@ func FindSkillMeta(name string) (*Skill, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	i := findInSkills(skills, name)
 	if i == -1 {
-		return nil, nil
+		return nil, ErrSkillNotFound
 	}
+
 	return &skills[i], nil
 }
 
@@ -81,10 +88,12 @@ func UpdateSkillMeta(name, description, today string) error {
 	if err != nil {
 		return err
 	}
+
 	i := findInSkills(skills, name)
 	if i == -1 {
-		return fmt.Errorf("skill %q not found", name)
+		return ErrSkillNotFound
 	}
+
 	skills[i].Description = description
 	skills[i].UpdatedAt = today
 	return SaveSkillsMeta(skills)
@@ -95,10 +104,12 @@ func RemoveSkillMeta(name string) error {
 	if err != nil {
 		return err
 	}
+
 	i := findInSkills(skills, name)
 	if i == -1 {
 		return nil
 	}
+
 	skills = append(skills[:i], skills[i+1:]...)
 	return SaveSkillsMeta(skills)
 }
@@ -111,6 +122,7 @@ func SaveSkillMeta(name, description, rawURL string) error {
 	if findInSkills(skills, name) != -1 {
 		return fmt.Errorf("skill %q already installed", name)
 	}
+
 	today := time.Now().Format("2006-01-02")
 	skills = append(skills, Skill{
 		Name:        name,

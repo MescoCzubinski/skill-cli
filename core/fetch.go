@@ -8,11 +8,10 @@ import (
 	"strings"
 )
 
-func GetRawURL(input string) (raw string, err error) {
+func GetRawURL(input string) (string, error) {
 	u, err := url.Parse(input)
 	if err != nil {
-		err = fmt.Errorf("invalid URL: %w", err)
-		return
+		return "", fmt.Errorf("invalid URL: %w", err)
 	}
 	parts := strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
 	switch u.Host {
@@ -23,15 +22,13 @@ func GetRawURL(input string) (raw string, err error) {
 	case "gitlab.com":
 		return getRawURLGitLab(input, parts)
 	default:
-		err = fmt.Errorf("unsupported host %q: only github.com and gitlab.com supported", u.Host)
-		return
+		return "", fmt.Errorf("unsupported host %q: only github.com and gitlab.com supported", u.Host)
 	}
 }
 
-func getRawURLGitHub(input string, parts []string) (raw string, err error) {
+func getRawURLGitHub(input string, parts []string) (string, error) {
 	if len(parts) < 4 {
-		err = fmt.Errorf("unrecognized GitHub URL: %s", input)
-		return
+		return "", fmt.Errorf("unrecognized GitHub URL: %s", input)
 	}
 	user, repo, kind, branch := parts[0], parts[1], parts[2], parts[3]
 	rest := strings.Join(parts[4:], "/")
@@ -44,15 +41,13 @@ func getRawURLGitHub(input string, parts []string) (raw string, err error) {
 		}
 		return fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/SKILL.md", user, repo, branch), nil
 	default:
-		err = fmt.Errorf("unrecognized GitHub URL type %q: %s", kind, input)
-		return
+		return "", fmt.Errorf("unrecognized GitHub URL type %q: %s", kind, input)
 	}
 }
 
-func getRawURLGitLab(input string, parts []string) (raw string, err error) {
+func getRawURLGitLab(input string, parts []string) (string, error) {
 	if len(parts) < 5 || parts[2] != "-" {
-		err = fmt.Errorf("unrecognized GitLab URL: %s", input)
-		return
+		return "", fmt.Errorf("unrecognized GitLab URL: %s", input)
 	}
 	kind := parts[3]
 	switch kind {
@@ -65,44 +60,40 @@ func getRawURLGitLab(input string, parts []string) (raw string, err error) {
 		parts[3] = "raw"
 		return fmt.Sprintf("https://gitlab.com/%s/SKILL.md", strings.Join(parts, "/")), nil
 	default:
-		err = fmt.Errorf("unrecognized GitLab URL type %q: %s", kind, input)
-		return
+		return "", fmt.Errorf("unrecognized GitLab URL type %q: %s", kind, input)
 	}
 }
 
-func FetchSkill(rawURL string) (name, description, content string, err error) {
+func FetchSkill(rawURL string) (string, string, string, error) {
 	resp, err := http.Get(rawURL)
 	if err != nil {
-		err = fmt.Errorf("fetch %s: %w", rawURL, err)
-		return
+		return "", "", "", fmt.Errorf("fetch %s: %w", rawURL, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf("fetch %s: status %d", rawURL, resp.StatusCode)
-		return
+		return "", "", "", fmt.Errorf("fetch %s: status %d", rawURL, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		err = fmt.Errorf("read body: %w", err)
-		return
+		return "", "", "", fmt.Errorf("read body: %w", err)
 	}
 
-	content = string(body)
-	name, description, err = parseFrontmatter(content)
+	content := string(body)
+	name, description, err := parseFrontmatter(content)
 	if err != nil {
-		err = fmt.Errorf("parse frontmatter from %s: %w", rawURL, err)
+		return "", "", "", fmt.Errorf("parse frontmatter from %s: %w", rawURL, err)
 	}
-	return
+	return name, description, content, nil
 }
 
-func parseFrontmatter(content string) (name, description string, err error) {
+func parseFrontmatter(content string) (string, string, error) {
 	lines := strings.Split(content, "\n")
 	if len(lines) < 2 || strings.TrimSpace(lines[0]) != "---" {
-		err = fmt.Errorf("no frontmatter found")
-		return
+		return "", "", fmt.Errorf("no frontmatter found")
 	}
 
+	var name, description string
 	var blockKey string
 	var blockLines []string
 
@@ -147,7 +138,7 @@ func parseFrontmatter(content string) (name, description string, err error) {
 	flushBlock()
 
 	if name == "" {
-		err = fmt.Errorf("frontmatter missing 'name' field")
+		return "", "", fmt.Errorf("frontmatter missing 'name' field")
 	}
-	return
+	return name, description, nil
 }
