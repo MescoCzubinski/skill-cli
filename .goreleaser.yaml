@@ -32,25 +32,10 @@ archives:
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
 changelog:
-  use: github
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^chore:"
-      - "^test:"
-      - "^ci:"
-  groups:
-    - title: Features
-      regexp: "^feat"
-      order: 0
-    - title: Bug Fixes
-      regexp: "^fix"
-      order: 1
-    - title: Other Changes
-      order: 999
+  disable: true
 
 release:
   github:
-    owner: mieszko
+    owner: MescoCzubinski
     name: skill-cli
+  draft: true

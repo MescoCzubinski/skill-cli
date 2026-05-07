@@ -1,3 +1,3 @@
-module github.com/mieszko/skill-cli
+module github.com/MescoCzubinski/skill-cli
 
 go 1.25

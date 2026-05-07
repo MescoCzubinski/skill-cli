@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mieszko/skill-cli/core"
+	"github.com/MescoCzubinski/skill-cli/core"
 )
 
 func Add(args []string) {

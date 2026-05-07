@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mieszko/skill-cli/cmd"
+	"github.com/MescoCzubinski/skill-cli/cmd"
 )
 
 func main() {

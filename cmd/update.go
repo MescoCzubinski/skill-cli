@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mieszko/skill-cli/core"
+	"github.com/MescoCzubinski/skill-cli/core"
 )
 
 func Update(args []string) {

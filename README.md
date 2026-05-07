@@ -8,7 +8,7 @@ Install skills from GitHub/GitLab URLs, add, update and remove them, and sync ac
 
 ### Download binary
 
-Go to [Releases](https://github.com/mieszko/skill-cli/releases) and download the binary for your platform:
+Go to [Releases](https://github.com/MescoCzubinski/skill-cli/releases) and download the binary for your platform:
 
 | OS      | File                            |
 | ------- | ------------------------------- |
@@ -31,13 +31,13 @@ sudo mv skill-cli /usr/local/bin/
 ### With Go installed
 
 ```bash
-go install github.com/mieszko/skill-cli@latest
+go install github.com/MescoCzubinski/skill-cli@latest
 ```
 
 Or:
 
 ```bash
-git clone https://github.com/mieszko/skill-cli
+git clone https://github.com/MescoCzubinski/skill-cli
 cd skill-cli
 go build -o skill-cli .
 ```
