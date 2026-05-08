@@ -2,7 +2,7 @@
 
 A minimal CLI for managing AI skills.
 
-Install skills from GitHub/GitLab URLs, add, update and remove them, and sync across devices — no UI, no external registries (sync via your own GitHub/GitLab repository).
+Install skills from URLs, update from source, sync across devices via your own git repository - works with Claude Code, Codex CLI, Cursor, Windsurf, Gemini CLI.
 
 ## Install
 
@@ -48,18 +48,18 @@ go build -o skill-cli .
 skill-cli <command> [args]
 
 Commands:
-  add     <url>           Install a skill from a URL
-  list                    List installed skills
-  remove  <name>          Remove a skill by name
-  update  <name>|--all    Re-fetch and update skill(s)
-  remote  <url>           Attach a git remote for sync
-  sync                    Pull latest skills from remote
+  add <url>                Install a skill from a URL
+  list                     List installed skills
+  remove <name>            Remove a skill by name
+  update <name>|--all      Re-fetch and update skill(s)
+  remote <url>             Attach a git remote for sync
+  sync push|pull           Push or pull latest skills from remote
 ```
 
 ### Add a skill
 
 ```bash
-skill-cli add https://github.com/JuliusBrussee/caveman/blob/main/skills/caveman/SKILL.md
+skill-cli add https://github.com/{username}/{repository_name}/{skill_path}/{skill_name}/SKILL.md
 ```
 
 ### List installed skills
@@ -69,22 +69,22 @@ skill-cli list
 ```
 
 ```
-NAME         DESCRIPTION                                UPDATED
-caveman      Ultra-compressed communication mode...     2026-05-01
-grill-me     Interview the user to surface intent...    2026-04-23
+NAME           DESCRIPTION                                UPDATED
+{skill_name}   Ultra-compressed communication mode...     2026-05-01
+grill-me       Interview the user to surface intent...    2026-04-23
 ```
 
 ### Update skills
 
 ```bash
-skill-cli update caveman
+skill-cli update {skill_name}
 skill-cli update --all
 ```
 
 ### Remove a skill
 
 ```bash
-skill-cli remove caveman
+skill-cli remove {skill_name}
 ```
 
 ## Git
@@ -100,30 +100,66 @@ Create an empty repository on GitHub or GitLab, then run:
 **HTTPS:**
 
 ```bash
-skill-cli remote https://github.com/{yourname}/{repository}
+skill-cli remote https://github.com/{yourname}/{repository_name}
 ```
 
 ```bash
-skill-cli remote https://gitlab.com/{yourname}/{repository}
+skill-cli remote https://gitlab.com/{yourname}/{repository_name}
 ```
 
 **SSH:**
 
 ```bash
-skill-cli remote git@github.com:{yourname}/{repository}.git
+skill-cli remote git@github.com:{yourname}/{repository_name}.git
 ```
 
 ```bash
-skill-cli remote git@gitlab.com:{yourname}/{repository}.git
+skill-cli remote git@gitlab.com:{yourname}/{repository_name}.git
 ```
 
 ### Sync across devices
 
+Push local skills to the remote:
+
 ```bash
-skill-cli sync
+skill-cli sync push
 ```
 
-On a new device, attach the same remote and run `sync` to pull your existing skills.
+Pull skills from the remote:
+
+```bash
+skill-cli sync pull
+```
+
+On a new device, attach the same remote and run `skill-cli sync pull` to fetch your existing skills.
+
+#### Git commands used
+
+Under the hood, `skill-cli` runs plain `git` commands inside `~/.config/skill-cli/`
+
+`sync push` (when there are local changes):
+
+```
+git add .
+git commit -m "sync"
+git push
+```
+
+`sync pull`:
+
+```
+git pull
+```
+
+First `sync push|pull` (when the config directory is not yet a repo):
+
+```
+git init
+git remote add origin <your-remote-url>
+git add .
+git commit -m "init"
+git push -u origin main
+```
 
 ## Storage
 
@@ -132,7 +168,9 @@ Skills are stored locally in:
 ```
 ~/.config/skill-cli/
 ├── skills.json          # metadata: name, description, raw_url, installed_at, updated_at
+├── remote               # configured git remote URL (created by `skill-cli remote <url>`)
 └── skills/
-    ├── grill-me.md
-    └── caveman.md
+    ├── {skill_name}/SKILL.md
+    ├── {skill_name}/SKILL.md
+    └── {skill_name}/SKILL.md
 ```

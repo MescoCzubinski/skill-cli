@@ -38,14 +38,6 @@ func SetRemote(remoteURL string) error {
 	return os.WriteFile(remotePath(), []byte(remoteURL+"\n"), 0644)
 }
 
-func ClearRemote() error {
-	err := os.Remove(remotePath())
-	if os.IsNotExist(err) {
-		return nil
-	}
-	return err
-}
-
 func ValidateRemoteURL(remoteURL string) error {
 	err := exec.Command("git", "ls-remote", remoteURL).Run()
 	if err != nil {
