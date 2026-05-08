@@ -48,18 +48,18 @@ go build -o skill-cli .
 skill-cli <command> [args]
 
 Commands:
-  add <url>                Install a skill from a URL
-  list                     List installed skills
-  remove <name>            Remove a skill by name
-  update <name>|--all      Re-fetch and update skill(s)
-  remote <url>             Attach a git remote for sync
-  sync push|pull           Push or pull latest skills from remote
+  add     <url>             Install a skill from a URL
+  list                      List installed skills
+  remove  <name>            Remove a skill by name
+  update  <name>|--all      Re-fetch and update skill(s)
+  remote  <url>             Attach a git remote for sync
+  sync    push|pull         Push or pull latest skills from remote
 ```
 
 ### Add a skill
 
 ```bash
-skill-cli add https://github.com/{username}/{repository_name}/{skill_path}/{skill_name}/SKILL.md
+skill-cli add {url}
 ```
 
 ### List installed skills
@@ -69,9 +69,9 @@ skill-cli list
 ```
 
 ```
-NAME           DESCRIPTION                                UPDATED
-{skill_name}   Ultra-compressed communication mode...     2026-05-01
-grill-me       Interview the user to surface intent...    2026-04-23
+NAME           DESCRIPTION             UPDATED
+{skill_name}   {skill_description}     {skill_updated_at}
+{skill_name}   {skill_description}     {skill_updated_at}
 ```
 
 ### Update skills
