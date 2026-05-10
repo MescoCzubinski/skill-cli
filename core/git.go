@@ -49,38 +49,51 @@ func WriteGitignore() error {
 }
 
 func GitInit(remoteURL string) error {
-	dir := ConfigDir()
-	err := os.MkdirAll(dir, 0755)
-	if err != nil {
-		return err
+    dir := ConfigDir()
+    err := os.MkdirAll(dir, 0755)
+    if err != nil {
+        return err
+    }
+
+    out, err := exec.Command("git", "-C", dir, "init").CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("git init failed: %w\n%s", err, out)
+    }
+
+    out, err = exec.Command("git", "-C", dir, "remote", "add", "origin", remoteURL).CombinedOutput()
+    if err != nil {
+        return fmt.Errorf("git remote add failed: %w\n%s", err, out)
+    }
+
+    out, err = exec.Command("git", "-C", dir, "ls-remote", "--heads", "origin").CombinedOutput()
+    if err != nil {
+		return fmt.Errorf("git ls-remote failed: %w\n%s", err, out)
 	}
 
-	out, err := exec.Command("git", "-C", dir, "init").CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git init failed: %w\n%s", err, out)
+	hasCommits := len(out) > 0
+	if hasCommits {
+		out, err = exec.Command("git", "-C", dir, "pull", "origin", "main").CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("git pull failed: %w\n%s", err, out)
+		}
+
+		out, err = exec.Command("git", "-C", dir, "branch", "--set-upstream-to=origin/main", "main").CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("git branch failed: %w\n%s", err, out)
+		}
+	} else {
+		out, err = exec.Command("git", "-C", dir, "commit", "-m", "init").CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("git commit failed: %w\n%s", err, out)
+		}
+
+		out, err = exec.Command("git", "-C", dir, "push", "-u", "origin", "main").CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("git push failed: %w\n%s", err, out)
+		}
 	}
 
-	out, err = exec.Command("git", "-C", dir, "remote", "add", "origin", remoteURL).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git remote add failed: %w\n%s", err, out)
-	}
-
-	out, err = exec.Command("git", "-C", dir, "add", ".").CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git add failed: %w\n%s", err, out)
-	}
-
-	out, err = exec.Command("git", "-C", dir, "commit", "-m", "init").CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git commit failed: %w\n%s", err, out)
-	}
-
-	out, err = exec.Command("git", "-C", dir, "push", "-u", "origin", "main").CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("git push failed: %w\n%s", err, out)
-	}
-
-	return nil
+    return nil
 }
 
 func GitSetOrigin(remoteURL string) error {

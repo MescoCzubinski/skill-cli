@@ -1,6 +1,6 @@
 # skill-cli
 
-A minimal CLI for managing AI skills.
+A minimal CLI for managing AI [skills](https://addyosmani.com/blog/agent-skills/).
 
 Install skills from URLs, update from source, sync across devices via your own git repository - works with Claude Code, Codex CLI, Cursor, Windsurf, Gemini CLI.
 
@@ -12,8 +12,10 @@ Go to [Releases](https://github.com/MescoCzubinski/skill-cli/releases) and downl
 
 | OS      | File                            |
 | ------- | ------------------------------- |
-| Linux   | `skill-cli_linux_amd64.tar.gz`  |
+| macOS   | `skill-cli_darwin_amd64.tar.gz` |
 | macOS   | `skill-cli_darwin_arm64.tar.gz` |
+| Linux   | `skill-cli_linux_amd64.tar.gz`  |
+| Linux   | `skill-cli_linux_arm64.tar.gz`  |
 | Windows | `skill-cli_windows_amd64.zip`   |
 
 **Linux & macOS:**
