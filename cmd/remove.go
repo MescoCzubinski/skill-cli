@@ -14,7 +14,23 @@ func Remove(args []string) {
 	}
 
 	name := args[0]
-	_, err := core.FindSkillMeta(name)
+
+	hasRemote := core.HasRemote()
+	if hasRemote {
+		err := core.GitPull()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
+
+	err := core.SyncSkillFiles()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	_, err = core.GetSkillMeta(name)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -30,6 +46,20 @@ func Remove(args []string) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+
+	err = core.SyncSkillFiles()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	if hasRemote {
+		err = core.GitPush("remove: " + name)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 
 	fmt.Printf("removed: %s\n", name)

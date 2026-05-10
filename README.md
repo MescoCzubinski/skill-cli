@@ -53,7 +53,6 @@ Commands:
   remove  <name>            Remove a skill by name
   update  <name>|--all      Re-fetch and update skill(s)
   remote  <url>             Attach a git remote for sync
-  sync    push|pull         Push or pull latest skills from remote
 ```
 
 ### Add a skill
@@ -89,7 +88,7 @@ skill-cli remove {skill_name}
 
 ## Git
 
-`skill-cli` works without a git remote. Attaching one enables syncing your skills across multiple devices.
+`skill-cli` works without a git remote. Attaching one enables syncing your skills across multiple devices automatically - each `add`, `remove`, and `update` pulls from and pushes to the remote.
 
 Git must be installed and authentication (SSH or HTTPS) must be configured. `skill-cli` calls `git` directly and inherits your existing credentials.
 
@@ -117,41 +116,13 @@ skill-cli remote git@github.com:{yourname}/{repository_name}.git
 skill-cli remote git@gitlab.com:{yourname}/{repository_name}.git
 ```
 
-### Sync across devices
-
-Push local skills to the remote:
-
-```bash
-skill-cli sync push
-```
-
-Pull skills from the remote:
-
-```bash
-skill-cli sync pull
-```
-
-On a new device, attach the same remote and run `skill-cli sync pull` to fetch your existing skills.
+On a new device, run the same `skill-cli remote <url>` to fetch your existing skills.
 
 #### Git commands used
 
-Under the hood, `skill-cli` runs plain `git` commands inside `~/.config/skill-cli/`
+Under the hood, `skill-cli` runs plain `git` commands inside `~/.config/skill-cli/`.
 
-`sync push` (when there are local changes):
-
-```
-git add .
-git commit -m "sync"
-git push
-```
-
-`sync pull`:
-
-```
-git pull
-```
-
-First `sync push|pull` (when the config directory is not yet a repo):
+`remote <url>` when the config directory is not yet a repo:
 
 ```
 git init
@@ -159,6 +130,26 @@ git remote add origin <your-remote-url>
 git add .
 git commit -m "init"
 git push -u origin main
+```
+
+`remote <url>` when the repo already exists:
+
+```
+git remote set-url origin <your-remote-url>
+```
+
+Before each `add`, `remove`, or `update` (when a remote is configured):
+
+```
+git pull --rebase
+```
+
+After each `add`, `remove`, or `update` (when a remote is configured):
+
+```
+git add .
+git commit -m "<add|remove|update>: <name>"
+git push -u origin HEAD
 ```
 
 ## Storage

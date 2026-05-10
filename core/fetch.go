@@ -84,6 +84,7 @@ func FetchSkill(rawURL string) (string, string, string, error) {
 	if err != nil {
 		return "", "", "", fmt.Errorf("parse frontmatter from %s: %w", rawURL, err)
 	}
+
 	return name, description, content, nil
 }
 
@@ -140,5 +141,6 @@ func parseFrontmatter(content string) (string, string, error) {
 	if name == "" {
 		return "", "", fmt.Errorf("frontmatter missing 'name' field")
 	}
+
 	return name, description, nil
 }

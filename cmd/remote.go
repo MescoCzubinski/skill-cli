@@ -20,6 +20,23 @@ func Remote(args []string) {
 		os.Exit(1)
 	}
 
+	err = core.WriteGitignore()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	isRepo := core.IsGitRepo()
+	if !isRepo {
+		err = core.GitInit(remoteURL)
+	} else {
+		err = core.GitSetOrigin(remoteURL)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
 	err = core.SetRemote(remoteURL)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

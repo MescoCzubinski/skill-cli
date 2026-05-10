@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/MescoCzubinski/skill-cli/core"
@@ -14,47 +15,75 @@ func Update(args []string) {
 		os.Exit(1)
 	}
 
-	if args[0] == "--all" {
-		updateAll()
-	} else {
-		updateSingle(args[0])
+	hasRemote := core.HasRemote()
+	if hasRemote {
+		err := core.GitPull()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
-}
 
-func updateAll() {
-	today := time.Now().Format("2006-01-02")
-
-	skills, err := core.GetSkillsMeta()
+	err := core.SyncSkillFiles()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
+	skills := loadSkillsToChange(args[0])
+	today := time.Now().Format("2006-01-02")
+
+	changed := []string{}
 	for i := range skills {
-		updateSkill(&skills[i], today)
+		didChange := updateSkill(&skills[i], today)
+		if didChange {
+			changed = append(changed, skills[i].Name)
+		}
 	}
-}
 
-func updateSingle(name string) {
-	today := time.Now().Format("2006-01-02")
-
-	skill, err := core.FindSkillMeta(name)
+	err = core.SyncSkillFiles()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	updateSkill(skill, today)
+	if hasRemote && len(changed) > 0 {
+		msg := "update: " + strings.Join(changed, ", ")
+		err = core.GitPush(msg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
 }
 
-func updateSkill(skill *core.Skill, today string) {
+func loadSkillsToChange(arg string) []core.Skill {
+	if arg == "--all" {
+		skills, err := core.GetSkillsMeta()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return skills
+	}
+
+	skill, err := core.GetSkillMeta(arg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	return []core.Skill{*skill}
+}
+
+func updateSkill(skill *core.Skill, today string) bool {
 	_, description, content, err := core.FetchSkill(skill.RawURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "update %s: %v\n", skill.Name, err)
 		os.Exit(1)
 	}
 
-	err = core.SaveSkillFile(skill.Name, content)
+	changed, err := core.SaveSkillFile(skill.Name, content)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -66,5 +95,11 @@ func updateSkill(skill *core.Skill, today string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("updated: %s\n", skill.Name)
+	if changed {
+		fmt.Printf("updated: %s\n", skill.Name)
+	} else {
+		fmt.Printf("unchanged: %s\n", skill.Name)
+	}
+
+	return changed
 }

@@ -1,45 +1,45 @@
 package core
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-func SaveSkillFile(name, content string) error {
+var deployTargets = []string{
+	".claude/skills",
+	".cursor/skills",
+	".gemini/skills",
+	".gemini/antigravity/skills",
+	".opencode/skills",
+	".codex/skills",
+}
+
+func SaveSkillFile(name, content string) (bool, error) {
 	dir := filepath.Join(SkillsDir(), name)
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
-		return err
+		return false, err
 	}
 
+	path := filepath.Join(dir, "SKILL.md")
 	data := []byte(content)
-	err = os.WriteFile(filepath.Join(dir, "SKILL.md"), data, 0644)
-	if err != nil {
-		return err
+
+	existing, err := os.ReadFile(path)
+	if err == nil && bytes.Equal(existing, data) {
+		return false, nil
+	}
+	if err != nil && !os.IsNotExist(err) {
+		return false, err
 	}
 
-	home, err := os.UserHomeDir()
+	err = os.WriteFile(path, data, 0644)
 	if err != nil {
-		return err
+		return false, err
 	}
-	for _, target := range deployTargets {
-		assistantDir := filepath.Join(home, strings.SplitN(target, "/", 2)[0])
-		_, err = os.Stat(assistantDir)
-		if os.IsNotExist(err) {
-			continue
-		}
-		skillDir := filepath.Join(home, target, name)
-		err = os.MkdirAll(skillDir, 0755)
-		if err != nil {
-			return err
-		}
-		err = os.WriteFile(filepath.Join(skillDir, "SKILL.md"), data, 0644)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+
+	return true, nil
 }
 
 func RemoveSkillFile(name string) error {
@@ -48,13 +48,112 @@ func RemoveSkillFile(name string) error {
 		return err
 	}
 
+	return nil
+}
+
+func SyncSkillFiles() error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
 
+	src := SkillsDir()
+	canonical, err := listSkillNames(src)
+	if err != nil {
+		return err
+	}
+
 	for _, target := range deployTargets {
-		os.RemoveAll(filepath.Join(home, target, name))
+		assistantDir := filepath.Join(home, strings.SplitN(target, "/", 2)[0])
+		_, err = os.Stat(assistantDir)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		dst := filepath.Join(home, target)
+		err = os.MkdirAll(dst, 0755)
+		if err != nil {
+			return err
+		}
+
+		deployed, err := listSkillNames(dst)
+		if err != nil {
+			return err
+		}
+
+		for name := range deployed {
+			_, keep := canonical[name]
+			if keep {
+				continue
+			}
+			err = os.RemoveAll(filepath.Join(dst, name))
+			if err != nil {
+				return err
+			}
+		}
+
+		for name := range canonical {
+			err = copyDir(filepath.Join(src, name), filepath.Join(dst, name))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func listSkillNames(dir string) (map[string]struct{}, error) {
+	names := map[string]struct{}{}
+	entries, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		return names, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		names[entry.Name()] = struct{}{}
+	}
+
+	return names, nil
+}
+
+func copyDir(src, dst string) error {
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(dst, 0755)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+		if entry.IsDir() {
+			err = copyDir(srcPath, dstPath)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		data, err := os.ReadFile(srcPath)
+		if err != nil {
+			return err
+		}
+		err = os.WriteFile(dstPath, data, 0644)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

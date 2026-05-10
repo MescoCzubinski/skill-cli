@@ -24,8 +24,6 @@ func main() {
 		cmd.Update(os.Args[2:])
 	case "remote":
 		cmd.Remote(os.Args[2:])
-	case "sync":
-		cmd.Sync(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
 		printUsage()
@@ -35,5 +33,5 @@ func main() {
 
 func printUsage() {
 	fmt.Println("usage: skill-cli <command> [args]")
-	fmt.Println("commands: add, list, remove, update, update --all, remote <url>, sync push|pull")
+	fmt.Println("commands: add, list, remove, update, update --all, remote <url>")
 }

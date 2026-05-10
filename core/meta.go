@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -16,6 +17,7 @@ func ConfigDir() string {
 	if err != nil {
 		base = os.Getenv("HOME") + "/.config"
 	}
+
 	return filepath.Join(base, "skill-cli")
 }
 
@@ -23,12 +25,50 @@ func SkillsDir() string {
 	return filepath.Join(ConfigDir(), "skills")
 }
 
-func jsonPath() string {
-	return filepath.Join(ConfigDir(), "skills.json")
+func metaDir() string {
+	return filepath.Join(ConfigDir(), "meta")
+}
+
+func metaPath(name string) string {
+	return filepath.Join(metaDir(), name+".json")
+}
+
+func readSkillMeta(name string) (*Skill, error) {
+	data, err := os.ReadFile(metaPath(name))
+	if err != nil {
+		return nil, err
+	}
+
+	var meta SkillMeta
+	err = json.Unmarshal(data, &meta)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Skill{
+		Name:        name,
+		RawURL:      meta.RawURL,
+		InstalledAt: meta.InstalledAt,
+		UpdatedAt:   meta.UpdatedAt,
+	}, nil
+}
+
+func writeSkillMeta(name string, meta SkillMeta) error {
+	err := os.MkdirAll(metaDir(), 0755)
+	if err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(metaPath(name), data, 0644)
 }
 
 func GetSkillsMeta() ([]Skill, error) {
-	data, err := os.ReadFile(jsonPath())
+	entries, err := os.ReadDir(metaDir())
 	if os.IsNotExist(err) {
 		return []Skill{}, nil
 	}
@@ -36,100 +76,95 @@ func GetSkillsMeta() ([]Skill, error) {
 		return nil, err
 	}
 
-	var skills []Skill
-	err = json.Unmarshal(data, &skills)
-	if err != nil {
-		return nil, err
+	skills := []Skill{}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		filename := entry.Name()
+		hasSuffix := strings.HasSuffix(filename, ".json")
+		if !hasSuffix {
+			continue
+		}
+		name := strings.TrimSuffix(filename, ".json")
+		skill, err := readSkillMeta(name)
+		if err != nil {
+			return nil, err
+		}
+		skills = append(skills, *skill)
 	}
 
 	return skills, nil
 }
 
 func SaveSkillsMeta(skills []Skill) error {
-	dir := ConfigDir()
-	err := os.MkdirAll(dir, 0755)
-	if err != nil {
-		return err
-	}
-
-	data, err := json.MarshalIndent(skills, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(jsonPath(), data, 0644)
-}
-
-func findInSkills(skills []Skill, name string) int {
-	for i := range skills {
-		if skills[i].Name == name {
-			return i
+	for _, s := range skills {
+		err := writeSkillMeta(s.Name, SkillMeta{
+			RawURL:      s.RawURL,
+			InstalledAt: s.InstalledAt,
+			UpdatedAt:   s.UpdatedAt,
+		})
+		if err != nil {
+			return err
 		}
 	}
-	return -1
+
+	return nil
 }
 
-func FindSkillMeta(name string) (*Skill, error) {
-	skills, err := GetSkillsMeta()
+func GetSkillMeta(name string) (*Skill, error) {
+	skill, err := readSkillMeta(name)
+	if os.IsNotExist(err) {
+		return nil, ErrSkillNotFound
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	i := findInSkills(skills, name)
-	if i == -1 {
-		return nil, ErrSkillNotFound
-	}
-
-	return &skills[i], nil
+	return skill, nil
 }
 
 func UpdateSkillMeta(name, description, today string) error {
-	skills, err := GetSkillsMeta()
+	data, err := os.ReadFile(metaPath(name))
+	if os.IsNotExist(err) {
+		return ErrSkillNotFound
+	}
 	if err != nil {
 		return err
 	}
 
-	i := findInSkills(skills, name)
-	if i == -1 {
-		return ErrSkillNotFound
+	var meta SkillMeta
+	err = json.Unmarshal(data, &meta)
+	if err != nil {
+		return err
 	}
 
-	skills[i].Description = description
-	skills[i].UpdatedAt = today
-	return SaveSkillsMeta(skills)
+	meta.UpdatedAt = today
+	return writeSkillMeta(name, meta)
 }
 
 func RemoveSkillMeta(name string) error {
-	skills, err := GetSkillsMeta()
-	if err != nil {
-		return err
-	}
-
-	i := findInSkills(skills, name)
-	if i == -1 {
+	err := os.Remove(metaPath(name))
+	if os.IsNotExist(err) {
 		return nil
 	}
 
-	skills = append(skills[:i], skills[i+1:]...)
-	return SaveSkillsMeta(skills)
+	return err
 }
 
 func SaveSkillMeta(name, description, rawURL string) error {
-	skills, err := GetSkillsMeta()
-	if err != nil {
-		return err
-	}
-	if findInSkills(skills, name) != -1 {
+	_, err := os.Stat(metaPath(name))
+	if err == nil {
 		return fmt.Errorf("skill %q already installed", name)
+	}
+	if !os.IsNotExist(err) {
+		return err
 	}
 
 	today := time.Now().Format("2006-01-02")
-	skills = append(skills, Skill{
-		Name:        name,
-		Description: description,
+	return writeSkillMeta(name, SkillMeta{
 		RawURL:      rawURL,
 		InstalledAt: today,
 		UpdatedAt:   today,
 	})
-	return SaveSkillsMeta(skills)
 }

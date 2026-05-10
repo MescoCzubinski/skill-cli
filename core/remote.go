@@ -26,6 +26,7 @@ func GetRemote() (string, error) {
 	if remoteURL == "" {
 		return "", ErrNoRemote
 	}
+
 	return remoteURL, nil
 }
 
@@ -43,5 +44,6 @@ func ValidateRemoteURL(remoteURL string) error {
 	if err != nil {
 		return errors.New("repository not found or not accessible: " + remoteURL)
 	}
+
 	return nil
 }

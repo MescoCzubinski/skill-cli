@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -10,6 +11,21 @@ import (
 func Add(args []string) {
 	if len(args) < 1 {
 		fmt.Fprintln(os.Stderr, "usage: skill-cli add <url>")
+		os.Exit(1)
+	}
+
+	hasRemote := core.HasRemote()
+	if hasRemote {
+		err := core.GitPull()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
+
+	err := core.SyncSkillFiles()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
@@ -25,7 +41,19 @@ func Add(args []string) {
 		os.Exit(1)
 	}
 
-	err = core.SaveSkillFile(name, content)
+	_, err = core.GetSkillMeta(name)
+	if err == nil {
+		fmt.Fprintf(os.Stderr, "skill %q already installed\n", name)
+		fmt.Fprintf(os.Stderr, "  run `skill-cli update %s` to refresh it\n", name)
+		fmt.Fprintf(os.Stderr, "  run `skill-cli remove %s` first to reinstall from a different source\n", name)
+		os.Exit(1)
+	}
+	if !errors.Is(err, core.ErrSkillNotFound) {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	_, err = core.SaveSkillFile(name, content)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -35,6 +63,20 @@ func Add(args []string) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+
+	err = core.SyncSkillFiles()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	if hasRemote {
+		err = core.GitPush("add: " + name)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 
 	fmt.Printf("added: %s\n", name)
