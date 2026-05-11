@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
@@ -62,6 +63,29 @@ func getRawURLGitLab(input string, parts []string) (string, error) {
 	default:
 		return "", fmt.Errorf("unrecognized GitLab URL type %q: %s", kind, input)
 	}
+}
+
+func GetLocalSkill(path string) (string, string, string, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", "", "", err
+	}
+	if info.IsDir() {
+		path = path + "/SKILL.md"
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	content := string(data)
+	name, description, err := parseFrontmatter(content)
+	if err != nil {
+		return "", "", "", fmt.Errorf("parse frontmatter from %s: %w", path, err)
+	}
+
+	return name, description, content, nil
 }
 
 func FetchSkill(rawURL string) (string, string, string, error) {

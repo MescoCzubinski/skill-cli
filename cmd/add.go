@@ -4,13 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/MescoCzubinski/skill-cli/core"
 )
 
 func Add(args []string) {
 	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: skill-cli add <url>")
+		fmt.Fprintln(os.Stderr, "usage: skill-cli add <url|path>")
 		os.Exit(1)
 	}
 
@@ -29,18 +30,26 @@ func Add(args []string) {
 		os.Exit(1)
 	}
 
-	rawURL, err := core.GetRawURL(args[0])
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	var name, description, content, rawURL string
+	if strings.HasPrefix(args[0], "http") {
+		rawURL, err = core.GetRawURL(args[0])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 
-	name, description, content, err := core.FetchSkill(rawURL)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		name, description, content, err = core.FetchSkill(rawURL)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	} else {
+		name, description, content, err = core.GetLocalSkill(args[0])
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
-
 	_, err = core.GetSkillMeta(name)
 	if err == nil {
 		fmt.Fprintf(os.Stderr, "skill %q already installed\n", name)

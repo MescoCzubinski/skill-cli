@@ -50,7 +50,7 @@ go build -o skill-cli .
 skill-cli <command> [args]
 
 Commands:
-  add     <url>             Install a skill from a URL
+  add     <url|path>        Install a skill from a URL or local file
   list                      List installed skills
   remove  <name>            Remove a skill by name
   update  <name>|--all      Re-fetch and update skill(s)
@@ -59,9 +59,19 @@ Commands:
 
 ### Add a skill
 
+From a URL:
+
 ```bash
 skill-cli add {url}
 ```
+
+From a local file:
+
+```bash
+skill-cli add ./path/to/SKILL.md
+```
+
+Skills installed from a local file cannot be updated with `skill-cli update` (there is no remote source to fetch from). To replace one, remove it first and re-add it.
 
 ### List installed skills
 

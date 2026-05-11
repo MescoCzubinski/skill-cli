@@ -138,6 +138,9 @@ func UpdateSkillMeta(name, description, today string) error {
 	if err != nil {
 		return err
 	}
+	if meta.RawURL == "" {
+		return fmt.Errorf("skill %q was installed from a local file and cannot be updated", name)
+	}
 
 	meta.UpdatedAt = today
 	return writeSkillMeta(name, meta)
