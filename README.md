@@ -171,7 +171,6 @@ Skills are stored locally in:
 ```
 ~/.config/skill-cli/
 ├── skills.json          # metadata: name, description, raw_url, installed_at, updated_at
-├── remote               # configured git remote URL (created by `skill-cli remote <url>`)
 └── skills/
     ├── {skill_name}/SKILL.md
     ├── {skill_name}/SKILL.md
