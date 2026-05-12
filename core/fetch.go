@@ -6,8 +6,23 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
+	"time"
 )
+
+const maxSkillBytes = 5 << 20 // 5 MiB
+
+var httpClient = &http.Client{Timeout: 30 * time.Second}
+
+func validateSkillName(name string) error {
+	var skillNameRegexp = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
+	if !skillNameRegexp.MatchString(name) {
+		return fmt.Errorf("invalid skill name %q: must match [a-z0-9][a-z0-9._-]{0,63}", name)
+	}
+
+	return nil
+}
 
 func GetRawURL(input string) (string, error) {
 	u, err := url.Parse(input)
@@ -84,12 +99,16 @@ func GetLocalSkill(path string) (string, string, string, error) {
 	if err != nil {
 		return "", "", "", fmt.Errorf("parse frontmatter from %s: %w", path, err)
 	}
+	err = validateSkillName(name)
+	if err != nil {
+		return "", "", "", err
+	}
 
 	return name, description, content, nil
 }
 
 func FetchSkill(rawURL string) (string, string, string, error) {
-	resp, err := http.Get(rawURL)
+	resp, err := httpClient.Get(rawURL)
 	if err != nil {
 		return "", "", "", fmt.Errorf("fetch %s: %w", rawURL, err)
 	}
@@ -98,15 +117,23 @@ func FetchSkill(rawURL string) (string, string, string, error) {
 		return "", "", "", fmt.Errorf("fetch %s: status %d", rawURL, resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	limited := io.LimitReader(resp.Body, maxSkillBytes+1)
+	body, err := io.ReadAll(limited)
 	if err != nil {
 		return "", "", "", fmt.Errorf("read body: %w", err)
+	}
+	if int64(len(body)) > maxSkillBytes {
+		return "", "", "", fmt.Errorf("fetch %s: body exceeds %d bytes", rawURL, maxSkillBytes)
 	}
 
 	content := string(body)
 	name, description, err := parseFrontmatter(content)
 	if err != nil {
 		return "", "", "", fmt.Errorf("parse frontmatter from %s: %w", rawURL, err)
+	}
+	err = validateSkillName(name)
+	if err != nil {
+		return "", "", "", err
 	}
 
 	return name, description, content, nil

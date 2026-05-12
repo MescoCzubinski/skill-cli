@@ -24,24 +24,24 @@ func Update(args []string) {
 		}
 	}
 
-	err := core.SyncSkillFiles()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
 	skills := loadSkillsToChange(args[0])
 	today := time.Now().Format("2006-01-02")
 
 	changed := []string{}
+	hadError := false
 	for i := range skills {
-		didChange := updateSkill(&skills[i], today)
+		didChange, err := updateSkill(&skills[i], today)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "update %s: %v\n", skills[i].Name, err)
+			hadError = true
+			continue
+		}
 		if didChange {
 			changed = append(changed, skills[i].Name)
 		}
 	}
 
-	err = core.SyncSkillFiles()
+	err := core.SyncSkillFiles()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -54,6 +54,10 @@ func Update(args []string) {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	}
+
+	if hadError {
+		os.Exit(1)
 	}
 }
 
@@ -76,28 +80,24 @@ func loadSkillsToChange(arg string) []core.Skill {
 	return []core.Skill{*skill}
 }
 
-func updateSkill(skill *core.Skill, today string) bool {
+func updateSkill(skill *core.Skill, today string) (bool, error) {
 	if skill.RawURL == "" {
-		fmt.Fprintf(os.Stderr, "update %s: installed from a local file (cannot update)\n", skill.Name)
-		os.Exit(1)
+		return false, fmt.Errorf("installed from a local file (cannot update)")
 	}
 
 	_, description, content, err := core.FetchSkill(skill.RawURL)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "update %s: %v\n", skill.Name, err)
-		os.Exit(1)
+		return false, err
 	}
 
 	changed, err := core.SaveSkillFile(skill.Name, content)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return false, err
 	}
 
 	err = core.UpdateSkillMeta(skill.Name, description, today)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return false, err
 	}
 
 	if changed {
@@ -106,5 +106,5 @@ func updateSkill(skill *core.Skill, today string) bool {
 		fmt.Printf("unchanged: %s\n", skill.Name)
 	}
 
-	return changed
+	return changed, nil
 }

@@ -24,13 +24,8 @@ func Add(args []string) {
 		}
 	}
 
-	err := core.SyncSkillFiles()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
 	var name, description, content, rawURL string
+	var err error
 	if strings.HasPrefix(args[0], "http") {
 		rawURL, err = core.GetRawURL(args[0])
 		if err != nil {

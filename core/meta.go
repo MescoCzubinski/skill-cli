@@ -65,7 +65,7 @@ func writeSkillMeta(name string, meta SkillMeta) error {
 		return err
 	}
 
-	return os.WriteFile(metaPath(name), data, 0644)
+	return os.WriteFile(metaPath(name), data, 0600)
 }
 
 func GetSkillsMeta() ([]Skill, error) {
@@ -159,14 +159,6 @@ func RemoveSkillMeta(name string) error {
 }
 
 func SaveSkillMeta(name, description, rawURL string) error {
-	_, err := os.Stat(metaPath(name))
-	if err == nil {
-		return fmt.Errorf("skill %q already installed", name)
-	}
-	if !os.IsNotExist(err) {
-		return err
-	}
-
 	today := time.Now().Format("2006-01-02")
 	return writeSkillMeta(name, SkillMeta{
 		RawURL:      rawURL,

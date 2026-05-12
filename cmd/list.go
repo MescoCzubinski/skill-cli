@@ -21,8 +21,9 @@ func List(_ []string) {
 	fmt.Printf("%-16s %-45s %s\n", "NAME", "DESCRIPTION", "UPDATED")
 	for _, s := range skills {
 		desc := s.Description
-		if len(desc) > 42 {
-			desc = desc[:42] + "..."
+		runes := []rune(desc)
+		if len(runes) > 42 {
+			desc = string(runes[:42]) + "..."
 		}
 		fmt.Printf("%-16s %-45s %s\n", s.Name, desc, s.UpdatedAt)
 	}

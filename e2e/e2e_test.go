@@ -256,6 +256,72 @@ func TestAdd_SyncsToDeploy(t *testing.T) {
 	}
 }
 
+func TestAdd_RejectsMaliciousName(t *testing.T) {
+	env := newEnv(t)
+	_, stderr, code := run(t, env, "add", fixture("malicious-name.md"))
+	if code == 0 {
+		t.Fatal("expected exit 1 for malicious name")
+	}
+	if !strings.Contains(stderr, "invalid skill name") {
+		t.Errorf("expected 'invalid skill name' in stderr, got: %q", stderr)
+	}
+
+	skillsRoot := filepath.Join(env, "skill-cli", "skills")
+	entries, _ := os.ReadDir(skillsRoot)
+	for _, e := range entries {
+		if strings.Contains(e.Name(), "..") || strings.Contains(e.Name(), "escape") {
+			t.Errorf("malicious dir leaked into skills/: %q", e.Name())
+		}
+	}
+
+	configParent := filepath.Dir(env)
+	if _, err := os.Stat(filepath.Join(configParent, "escape")); err == nil {
+		t.Error("malicious path wrote outside config dir")
+	}
+}
+
+func TestAdd_RejectsEmptyName(t *testing.T) {
+	env := newEnv(t)
+	_, stderr, code := run(t, env, "add", fixture("empty-name.md"))
+	if code == 0 {
+		t.Fatal("expected exit 1 for empty name")
+	}
+	if !strings.Contains(stderr, "invalid skill name") && !strings.Contains(stderr, "missing 'name'") {
+		t.Errorf("expected name-related error in stderr, got: %q", stderr)
+	}
+}
+
+func TestAdd_RejectsSlashName(t *testing.T) {
+	env := newEnv(t)
+	_, stderr, code := run(t, env, "add", fixture("slash-name.md"))
+	if code == 0 {
+		t.Fatal("expected exit 1 for slashed name")
+	}
+	if !strings.Contains(stderr, "invalid skill name") {
+		t.Errorf("expected 'invalid skill name' in stderr, got: %q", stderr)
+	}
+}
+
+func TestAdd_RejectsOversizeBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		chunk := strings.Repeat("a", 64*1024)
+		for i := 0; i < 100; i++ {
+			fmt.Fprint(w, chunk)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	env := newEnv(t)
+	_, stderr, code := run(t, env, "add", srv.URL+"/SKILL.md")
+	if code == 0 {
+		t.Fatal("expected exit 1 for oversize body")
+	}
+	if !strings.Contains(stderr, "exceeds") {
+		t.Errorf("expected 'exceeds' in stderr, got: %q", stderr)
+	}
+}
+
 // ---- list ----
 
 func TestList_NoSkills(t *testing.T) {
@@ -458,6 +524,49 @@ func TestUpdate_AllMultipleSkills(t *testing.T) {
 	}
 }
 
+func TestUpdateAll_ContinuesPastFailure(t *testing.T) {
+	good := readFixture(t, "first.md")
+	goodURL := serveSkill(t, good)
+	badURL := serve404(t)
+
+	env := newEnv(t)
+
+	stdout, _, code := run(t, env, "add", goodURL)
+	if code != 0 {
+		t.Fatalf("setup add good failed: %d %q", code, stdout)
+	}
+
+	second := readFixture(t, "second.md")
+	stagingURL := serveSkill(t, second)
+	stdout, _, code = run(t, env, "add", stagingURL)
+	if code != 0 {
+		t.Fatalf("setup add second failed: %d %q", code, stdout)
+	}
+
+	metaPath := filepath.Join(env, "skill-cli", "meta", "second-skill.json")
+	data, _ := os.ReadFile(metaPath)
+	rewritten := strings.Replace(string(data), stagingURL, badURL, 1)
+	os.WriteFile(metaPath, []byte(rewritten), 0644)
+
+	updatedGood := strings.Replace(good, "A skill for testing purposes", "Updated good description", 1)
+	updatedGoodURL := serveSkill(t, updatedGood)
+	goodMeta := filepath.Join(env, "skill-cli", "meta", "first-skill.json")
+	goodData, _ := os.ReadFile(goodMeta)
+	goodRewritten := strings.Replace(string(goodData), goodURL, updatedGoodURL, 1)
+	os.WriteFile(goodMeta, []byte(goodRewritten), 0644)
+
+	stdout, stderr, code := run(t, env, "update", "--all")
+	if code == 0 {
+		t.Fatalf("expected non-zero exit when one upstream fails; stdout=%q stderr=%q", stdout, stderr)
+	}
+	if !strings.Contains(stdout, "first-skill") {
+		t.Errorf("expected first-skill to still update; stdout=%q", stdout)
+	}
+	if !strings.Contains(stderr, "second-skill") {
+		t.Errorf("expected second-skill failure in stderr; stderr=%q", stderr)
+	}
+}
+
 // ---- remote ----
 
 func TestRemote_NoArgs(t *testing.T) {
@@ -491,12 +600,10 @@ func TestRemote_FreshConfigDir(t *testing.T) {
 func TestRemote_PopulatedRemoteFreshLocal(t *testing.T) {
 	repo := localBareRepo(t)
 
-	// Seed the bare repo with a skill from another env
 	seedEnv := newEnv(t)
 	run(t, seedEnv, "add", fixture("first.md"))
 	run(t, seedEnv, "remote", repo)
 
-	// Fresh local env, populated remote
 	env := newEnv(t)
 	stdout, stderr, code := run(t, env, "remote", repo)
 	if code != 0 {
@@ -534,5 +641,21 @@ func TestRemote_UpdateExistingRepo(t *testing.T) {
 	}
 	if !strings.Contains(strings.TrimSpace(string(out)), strings.TrimPrefix(repo2, "file://")) {
 		t.Errorf("remote URL not updated: got %q, want %q", strings.TrimSpace(string(out)), repo2)
+	}
+}
+
+func TestRemote_RejectsBadScheme(t *testing.T) {
+	env := newEnv(t)
+	_, stderr, code := run(t, env, "remote", "ext::sh -c id")
+	if code == 0 {
+		t.Fatal("expected exit 1 for ext:: scheme")
+	}
+	if !strings.Contains(stderr, "invalid remote URL") {
+		t.Errorf("expected 'invalid remote URL' in stderr, got: %q", stderr)
+	}
+
+	gitDir := filepath.Join(env, "skill-cli", ".git")
+	if _, err := os.Stat(gitDir); err == nil {
+		t.Error(".git should not have been created for bad scheme")
 	}
 }

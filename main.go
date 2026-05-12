@@ -33,5 +33,5 @@ func main() {
 
 func printUsage() {
 	fmt.Println("usage: skill-cli <command> [args]")
-	fmt.Println("commands: add, list, remove, update, update --all, remote <url>")
+	fmt.Println("commands: add <url|path>, list, remove <name>, update <name>|--all, remote <url>")
 }
