@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -31,6 +32,11 @@ func Remove(args []string) {
 	}
 
 	_, err = core.GetSkillMeta(name)
+	if errors.Is(err, core.ErrSkillNotFound) {
+		fmt.Fprintf(os.Stderr, "skill %q is not installed\n", name)
+		fmt.Fprintln(os.Stderr, "  run `skill-cli list` to see installed skills")
+		os.Exit(1)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

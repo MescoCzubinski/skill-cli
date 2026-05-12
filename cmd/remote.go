@@ -14,28 +14,38 @@ func Remote(args []string) {
 	}
 	remoteURL := args[0]
 
-	var err error
-	if !core.IsGitRepo() {
-		err = core.GitInit(remoteURL)
+	isRepo := core.IsGitRepo()
+	if !isRepo {
+		err := core.GitInit(remoteURL)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	} else {
-		err = core.GitSetOrigin(remoteURL)
+		err := core.GitSetOrigin(remoteURL)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		empty, err := core.IsRemoteEmpty()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		if empty {
+			err = core.GitPushMain()
+		} else {
+			err = core.GitPull()
+		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	}
 
-	err = core.GitPull()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-
-	err = core.SyncSkillFiles()
+	err := core.SyncSkillFiles()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

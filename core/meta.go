@@ -47,6 +47,7 @@ func readSkillMeta(name string) (*Skill, error) {
 
 	return &Skill{
 		Name:        name,
+		Description: meta.Description,
 		RawURL:      meta.RawURL,
 		InstalledAt: meta.InstalledAt,
 		UpdatedAt:   meta.UpdatedAt,
@@ -101,6 +102,7 @@ func SaveSkillsMeta(skills []Skill) error {
 	for _, s := range skills {
 		err := writeSkillMeta(s.Name, SkillMeta{
 			RawURL:      s.RawURL,
+			Description: s.Description,
 			InstalledAt: s.InstalledAt,
 			UpdatedAt:   s.UpdatedAt,
 		})
@@ -142,6 +144,7 @@ func UpdateSkillMeta(name, description, today string) error {
 		return fmt.Errorf("skill %q was installed from a local file and cannot be updated", name)
 	}
 
+	meta.Description = description
 	meta.UpdatedAt = today
 	return writeSkillMeta(name, meta)
 }
@@ -167,6 +170,7 @@ func SaveSkillMeta(name, description, rawURL string) error {
 	today := time.Now().Format("2006-01-02")
 	return writeSkillMeta(name, SkillMeta{
 		RawURL:      rawURL,
+		Description: description,
 		InstalledAt: today,
 		UpdatedAt:   today,
 	})

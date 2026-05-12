@@ -77,6 +77,11 @@ func loadSkillsToChange(arg string) []core.Skill {
 }
 
 func updateSkill(skill *core.Skill, today string) bool {
+	if skill.RawURL == "" {
+		fmt.Fprintf(os.Stderr, "update %s: installed from a local file (cannot update)\n", skill.Name)
+		os.Exit(1)
+	}
+
 	_, description, content, err := core.FetchSkill(skill.RawURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "update %s: %v\n", skill.Name, err)

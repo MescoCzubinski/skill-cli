@@ -156,6 +156,32 @@ func GitInit(remoteURL string) error {
 	return nil
 }
 
+func IsRemoteEmpty() (bool, error) {
+	if err := gitAvailable(); err != nil {
+		return false, err
+	}
+	dir := ConfigDir()
+	out, err := exec.Command("git", "-C", dir, "ls-remote", "--heads", "origin").CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("git ls-remote failed: %w\n%s", err, out)
+	}
+
+	return len(out) == 0, nil
+}
+
+func GitPushMain() error {
+	if err := gitAvailable(); err != nil {
+		return err
+	}
+	dir := ConfigDir()
+	out, err := exec.Command("git", "-C", dir, "push", "-u", "origin", "main").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git push failed: %w\n%s", err, out)
+	}
+
+	return nil
+}
+
 func GitSetOrigin(remoteURL string) error {
 	dir := ConfigDir()
 	out, err := exec.Command("git", "-C", dir, "remote", "set-url", "origin", remoteURL).CombinedOutput()
@@ -172,7 +198,7 @@ func GitPull() error {
 	}
 
 	dir := ConfigDir()
-	out, err := exec.Command("git", "-C", dir, "pull", "--rebase").CombinedOutput()
+	out, err := exec.Command("git", "-C", dir, "pull", "--rebase", "origin", "main").CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("git pull failed: %w\n%s", err, out)
 	}

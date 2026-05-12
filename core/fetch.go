@@ -23,7 +23,7 @@ func GetRawURL(input string) (string, error) {
 	case "gitlab.com":
 		return getRawURLGitLab(input, parts)
 	default:
-		return "", fmt.Errorf("unsupported host %q: only github.com and gitlab.com supported", u.Host)
+		return input, nil
 	}
 }
 
