@@ -84,6 +84,18 @@ func serveSkill(t *testing.T, content string) string {
 	return srv.URL + "/SKILL.md"
 }
 
+// serveClaude starts an httptest server serving content at /CLAUDE.md.
+// Returns the URL to the raw file.
+func serveClaude(t *testing.T, content string) string {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, content)
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL + "/CLAUDE.md"
+}
+
 // serve404 starts an httptest server that always returns 404.
 func serve404(t *testing.T) string {
 	t.Helper()

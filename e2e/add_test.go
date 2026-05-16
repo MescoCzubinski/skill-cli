@@ -181,6 +181,92 @@ func TestAdd_RejectsSlashName(t *testing.T) {
 	}
 }
 
+func TestAdd_Claude_LocalPath(t *testing.T) {
+	env := newEnv(t)
+	claudeDir := filepath.Join(env, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, stderr, code := run(t, env, "add", fixture("CLAUDE.md"))
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d, stderr=%q", code, stderr)
+	}
+	if !strings.Contains(stdout, "added: claude") {
+		t.Errorf("unexpected stdout: %q", stdout)
+	}
+
+	canonical := filepath.Join(env, "skill-cli", "claude", "CLAUDE.md")
+	if _, err := os.Stat(canonical); err != nil {
+		t.Errorf("canonical CLAUDE.md not created: %v", err)
+	}
+
+	deployed := filepath.Join(claudeDir, "CLAUDE.md")
+	data, err := os.ReadFile(deployed)
+	if err != nil {
+		t.Fatalf("deploy CLAUDE.md missing: %v", err)
+	}
+	want := readFixture(t, "CLAUDE.md")
+	if string(data) != want {
+		t.Errorf("deployed CLAUDE.md content mismatch")
+	}
+
+	metaPath := filepath.Join(env, "skill-cli", "meta", "claude.json")
+	metaData, err := os.ReadFile(metaPath)
+	if err != nil {
+		t.Fatalf("claude meta missing: %v", err)
+	}
+	if !strings.Contains(string(metaData), "global CLAUDE.md file") {
+		t.Errorf("expected hardcoded description in meta, got: %s", metaData)
+	}
+}
+
+func TestAdd_Claude_URL(t *testing.T) {
+	content := readFixture(t, "CLAUDE.md")
+	url := serveClaude(t, content)
+	env := newEnv(t)
+	if err := os.MkdirAll(filepath.Join(env, ".claude"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, _, code := run(t, env, "add", url)
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if !strings.Contains(stdout, "added: claude") {
+		t.Errorf("unexpected stdout: %q", stdout)
+	}
+
+	metaPath := filepath.Join(env, "skill-cli", "meta", "claude.json")
+	metaData, _ := os.ReadFile(metaPath)
+	if !strings.Contains(string(metaData), url) {
+		t.Errorf("expected raw_url in meta, got: %s", metaData)
+	}
+}
+
+func TestAdd_Claude_AlreadyInstalled(t *testing.T) {
+	env := newEnv(t)
+	run(t, env, "add", fixture("CLAUDE.md"))
+	_, stderr, code := run(t, env, "add", fixture("CLAUDE.md"))
+	if code == 0 {
+		t.Fatal("expected exit 1 on duplicate claude add")
+	}
+	if !strings.Contains(stderr, "already installed") {
+		t.Errorf("expected 'already installed' in stderr, got: %q", stderr)
+	}
+}
+
+func TestAdd_Skill_RejectsReservedName(t *testing.T) {
+	env := newEnv(t)
+	_, stderr, code := run(t, env, "add", fixture("reserved-name.md"))
+	if code == 0 {
+		t.Fatal("expected exit 1 for reserved skill name")
+	}
+	if !strings.Contains(stderr, "reserved") {
+		t.Errorf("expected 'reserved' in stderr, got: %q", stderr)
+	}
+}
+
 func TestAdd_RejectsOversizeBody(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

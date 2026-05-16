@@ -108,6 +108,90 @@ func TestUpdate_AllMultipleSkills(t *testing.T) {
 	}
 }
 
+func TestUpdate_Claude_SwitchURL(t *testing.T) {
+	original := readFixture(t, "CLAUDE.md")
+	v2 := readFixture(t, "CLAUDE-v2.md")
+	url1 := serveClaude(t, original)
+	url2 := serveClaude(t, v2)
+
+	env := newEnv(t)
+	if err := os.MkdirAll(filepath.Join(env, ".claude"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	run(t, env, "add", url1)
+
+	stdout, _, code := run(t, env, "update", "claude", url2)
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if !strings.Contains(stdout, "updated: claude") {
+		t.Errorf("expected 'updated: claude', got: %q", stdout)
+	}
+
+	metaPath := filepath.Join(env, "skill-cli", "meta", "claude.json")
+	metaData, _ := os.ReadFile(metaPath)
+	if !strings.Contains(string(metaData), url2) {
+		t.Errorf("expected new url in meta, got: %s", metaData)
+	}
+	if strings.Contains(string(metaData), url1) {
+		t.Errorf("old url should be gone, got: %s", metaData)
+	}
+
+	deployed := filepath.Join(env, ".claude", "CLAUDE.md")
+	data, _ := os.ReadFile(deployed)
+	if string(data) != v2 {
+		t.Errorf("deploy file should hold v2 content")
+	}
+}
+
+
+func TestUpdate_Skill_ReplaceURL(t *testing.T) {
+	first := readFixture(t, "first.md")
+	url1 := serveSkill(t, first)
+
+	env := newEnv(t)
+	run(t, env, "add", url1)
+
+	updated := strings.Replace(first, "A skill for testing purposes", "Refreshed via switch URL", 1)
+	url2 := serveSkill(t, updated)
+
+	stdout, _, code := run(t, env, "update", "first-skill", url2)
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if !strings.Contains(stdout, "updated: first-skill") {
+		t.Errorf("expected 'updated: first-skill', got: %q", stdout)
+	}
+
+	metaPath := filepath.Join(env, "skill-cli", "meta", "first-skill.json")
+	metaData, _ := os.ReadFile(metaPath)
+	if !strings.Contains(string(metaData), url2) {
+		t.Errorf("expected new url in meta, got: %s", metaData)
+	}
+}
+
+func TestUpdate_All_IncludesClaude(t *testing.T) {
+	first := readFixture(t, "first.md")
+	skillURL := serveSkill(t, first)
+	claudeContent := readFixture(t, "CLAUDE.md")
+	claudeURL := serveClaude(t, claudeContent)
+
+	env := newEnv(t)
+	run(t, env, "add", skillURL)
+	run(t, env, "add", claudeURL)
+
+	stdout, _, code := run(t, env, "update", "--all")
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if !strings.Contains(stdout, "first-skill") {
+		t.Errorf("expected first-skill in output, got: %q", stdout)
+	}
+	if !strings.Contains(stdout, "claude") {
+		t.Errorf("expected claude in output, got: %q", stdout)
+	}
+}
+
 func TestUpdateAll_ContinuesPastFailure(t *testing.T) {
 	good := readFixture(t, "first.md")
 	goodURL := serveSkill(t, good)
