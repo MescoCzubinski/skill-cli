@@ -145,6 +145,23 @@ func TestUpdate_Claude_SwitchURL(t *testing.T) {
 }
 
 
+func TestUpdate_Skill_WithURL_FetchFailure(t *testing.T) {
+	first := readFixture(t, "first.md")
+	url1 := serveSkill(t, first)
+	bad := serve404(t)
+
+	env := newEnv(t)
+	run(t, env, "add", url1)
+
+	_, stderr, code := run(t, env, "update", "first-skill", bad)
+	if code == 0 {
+		t.Fatal("expected exit 1 on fetch failure")
+	}
+	if !strings.Contains(stderr, "404") && !strings.Contains(stderr, "status") {
+		t.Errorf("expected fetch error in stderr, got: %q", stderr)
+	}
+}
+
 func TestUpdate_Skill_ReplaceURL(t *testing.T) {
 	first := readFixture(t, "first.md")
 	url1 := serveSkill(t, first)

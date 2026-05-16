@@ -133,9 +133,9 @@ func updateSkill(skill *core.Skill, today, overrideURL string) (bool, error) {
 			return false, err
 		}
 	} else {
-		parsedName, parsedDesc, err := core.ParseFrontmatter(content)
-		if err != nil {
-			return false, err
+		parsedName, parsedDesc, parseErr := core.ParseFrontmatter(content)
+		if parseErr != nil {
+			return false, parseErr
 		}
 		if overrideURL != "" && parsedName != skill.Name {
 			return false, fmt.Errorf("fetched skill name %q does not match %q", parsedName, skill.Name)
