@@ -51,6 +51,79 @@ func RemoveSkillFile(name string) error {
 	return nil
 }
 
+func claudeDir() string {
+	return filepath.Join(ConfigDir(), "claude")
+}
+
+func claudeFilePath() string {
+	return filepath.Join(claudeDir(), "CLAUDE.md")
+}
+
+func SaveClaudeFile(content string) (bool, error) {
+	err := os.MkdirAll(claudeDir(), 0755)
+	if err != nil {
+		return false, err
+	}
+
+	path := claudeFilePath()
+	data := []byte(content)
+
+	existing, err := os.ReadFile(path)
+	if err == nil && bytes.Equal(existing, data) {
+		return false, nil
+	}
+	if err != nil && !os.IsNotExist(err) {
+		return false, err
+	}
+
+	err = os.WriteFile(path, data, 0644)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func RemoveClaudeFile() error {
+	err := os.RemoveAll(claudeDir())
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	return nil
+}
+
+func SyncClaude() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	assistantDir := filepath.Join(home, ".claude")
+	_, err = os.Stat(assistantDir)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	dst := filepath.Join(assistantDir, "CLAUDE.md")
+	srcData, err := os.ReadFile(claudeFilePath())
+	if os.IsNotExist(err) {
+		err = os.Remove(dst)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(dst, srcData, 0644)
+}
+
 func SyncSkillFiles() error {
 	home, err := os.UserHomeDir()
 	if err != nil {

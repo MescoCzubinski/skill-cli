@@ -15,10 +15,13 @@ const maxSkillBytes = 5 << 20 // 5 MiB
 
 var httpClient = &http.Client{Timeout: 30 * time.Second}
 
-func validateSkillName(name string) error {
+func ValidateSkillName(name string) error {
 	var skillNameRegexp = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 	if !skillNameRegexp.MatchString(name) {
 		return fmt.Errorf("invalid skill name %q: must match [a-z0-9][a-z0-9._-]{0,63}", name)
+	}
+	if name == "claude" {
+		return fmt.Errorf("skill name %q is reserved", name)
 	}
 
 	return nil
@@ -80,66 +83,50 @@ func getRawURLGitLab(input string, parts []string) (string, error) {
 	}
 }
 
-func GetLocalSkill(path string) (string, string, string, error) {
+func ResolveLocalPath(path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return "", "", "", err
+		return "", err
 	}
 	if info.IsDir() {
 		path = path + "/SKILL.md"
 	}
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", "", "", err
-	}
-
-	content := string(data)
-	name, description, err := parseFrontmatter(content)
-	if err != nil {
-		return "", "", "", fmt.Errorf("parse frontmatter from %s: %w", path, err)
-	}
-	err = validateSkillName(name)
-	if err != nil {
-		return "", "", "", err
-	}
-
-	return name, description, content, nil
+	return path, nil
 }
 
-func FetchSkill(rawURL string) (string, string, string, error) {
+func GetLocal(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
+
+func Fetch(rawURL string) (string, error) {
 	resp, err := httpClient.Get(rawURL)
 	if err != nil {
-		return "", "", "", fmt.Errorf("fetch %s: %w", rawURL, err)
+		return "", fmt.Errorf("fetch %s: %w", rawURL, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", "", "", fmt.Errorf("fetch %s: status %d", rawURL, resp.StatusCode)
+		return "", fmt.Errorf("fetch %s: status %d", rawURL, resp.StatusCode)
 	}
 
 	limited := io.LimitReader(resp.Body, maxSkillBytes+1)
 	body, err := io.ReadAll(limited)
 	if err != nil {
-		return "", "", "", fmt.Errorf("read body: %w", err)
+		return "", fmt.Errorf("read body: %w", err)
 	}
 	if int64(len(body)) > maxSkillBytes {
-		return "", "", "", fmt.Errorf("fetch %s: body exceeds %d bytes", rawURL, maxSkillBytes)
+		return "", fmt.Errorf("fetch %s: body exceeds %d bytes", rawURL, maxSkillBytes)
 	}
 
-	content := string(body)
-	name, description, err := parseFrontmatter(content)
-	if err != nil {
-		return "", "", "", fmt.Errorf("parse frontmatter from %s: %w", rawURL, err)
-	}
-	err = validateSkillName(name)
-	if err != nil {
-		return "", "", "", err
-	}
-
-	return name, description, content, nil
+	return string(body), nil
 }
 
-func parseFrontmatter(content string) (string, string, error) {
+func ParseFrontmatter(content string) (string, string, error) {
 	lines := strings.Split(content, "\n")
 	if len(lines) < 2 || strings.TrimSpace(lines[0]) != "---" {
 		return "", "", fmt.Errorf("no frontmatter found")

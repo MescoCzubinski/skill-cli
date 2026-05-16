@@ -88,6 +88,9 @@ func GetSkillsMeta() ([]Skill, error) {
 			continue
 		}
 		name := strings.TrimSuffix(filename, ".json")
+		if name == "claude" {
+			continue
+		}
 		skill, err := readSkillMeta(name)
 		if err != nil {
 			return nil, err
@@ -96,6 +99,18 @@ func GetSkillsMeta() ([]Skill, error) {
 	}
 
 	return skills, nil
+}
+
+func GetClaudeMeta() (*Skill, error) {
+	skill, err := readSkillMeta("claude")
+	if os.IsNotExist(err) {
+		return nil, ErrSkillNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return skill, nil
 }
 
 func SaveSkillsMeta(skills []Skill) error {
@@ -126,7 +141,7 @@ func GetSkillMeta(name string) (*Skill, error) {
 	return skill, nil
 }
 
-func UpdateSkillMeta(name, description, today string) error {
+func UpdateSkillMeta(name, description, today, newRawURL string) error {
 	data, err := os.ReadFile(metaPath(name))
 	if os.IsNotExist(err) {
 		return ErrSkillNotFound
@@ -139,6 +154,9 @@ func UpdateSkillMeta(name, description, today string) error {
 	err = json.Unmarshal(data, &meta)
 	if err != nil {
 		return err
+	}
+	if newRawURL != "" {
+		meta.RawURL = newRawURL
 	}
 	if meta.RawURL == "" {
 		return fmt.Errorf("skill %q was installed from a local file and cannot be updated", name)

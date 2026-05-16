@@ -43,6 +43,12 @@ func Remote(args []string) {
 		os.Exit(1)
 	}
 
+	err = core.SyncClaude()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
 	fmt.Printf("set remote: %s\n", remoteURL)
 }
 
