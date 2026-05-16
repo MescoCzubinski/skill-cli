@@ -1,8 +1,8 @@
 # skill-cli
 
-A minimal CLI for managing AI [skills](https://addyosmani.com/blog/agent-skills/).
+A minimal CLI for managing [AI skills](https://addyosmani.com/blog/agent-skills/) and a global `CLAUDE.md`.
 
-Install skills from URLs, update from source, sync across devices via your own git repository - works with Claude Code, Codex CLI, Cursor, Windsurf, Gemini CLI.
+Install skills and `CLAUDE.md` from URLs, update from source, sync across devices via your own git repository - works with Claude Code, Codex CLI, Cursor, Windsurf, Gemini CLI.
 
 ## Install
 
@@ -50,11 +50,12 @@ go build -o skill-cli .
 skill-cli <command> [args]
 
 Commands:
-  add     <url|path>        Install a skill from a URL or local file
-  list                      List installed skills
-  remove  <name>            Remove a skill by name
-  update  <name>|--all      Re-fetch and update skill(s)
-  remote  <url>             Attach a git remote for sync
+  add     <url|path>                     Install a skill or CLAUDE.md from a URL or local file
+  list                                   List installed skills and CLAUDE.md
+  remove  <name>|claude                  Remove a skill by name, or the global CLAUDE.md
+  update  <name>|claude|--all            Re-fetch and update skill(s) or CLAUDE.md
+  update  <name> [<url>]|claude [<url>]  Switch the source URL and re-fetch
+  remote  <url>                          Attach a git remote for sync
 ```
 
 ### Add a skill
@@ -73,6 +74,17 @@ skill-cli add ./path/to/SKILL.md
 
 Skills installed from a local file cannot be updated with `skill-cli update` (there is no remote source to fetch from). To replace one, remove it first and re-add it.
 
+### Add a global CLAUDE.md
+
+Same `add` command — type is detected by basename. The path/URL must end in `/CLAUDE.md`:
+
+```bash
+skill-cli add https://raw.githubusercontent.com/{user}/{repo}/main/CLAUDE.md
+skill-cli add ./path/to/CLAUDE.md
+```
+
+Only one CLAUDE.md may be installed at a time, under the reserved name `claude`. It is mirrored to `~/.claude/CLAUDE.md` (existing file there is overwritten). To replace the source, run `skill-cli update claude <new-url>` or `skill-cli remove claude` first.
+
 ### List installed skills
 
 ```bash
@@ -80,22 +92,38 @@ skill-cli list
 ```
 
 ```
+Skills:
 NAME           DESCRIPTION             UPDATED
 {skill_name}   {skill_description}     {skill_updated_at}
 {skill_name}   {skill_description}     {skill_updated_at}
+
+CLAUDE.md:
+NAME           DESCRIPTION             UPDATED
+claude         global CLAUDE.md file   {claude_updated_at}
 ```
 
 ### Update skills
 
 ```bash
 skill-cli update {skill_name}
+skill-cli update claude
 skill-cli update --all
 ```
 
-### Remove a skill
+Pass a URL to switch the source for a skill or CLAUDE.md and re-fetch from it:
+
+```bash
+skill-cli update {skill_name} {new_url}
+skill-cli update claude {new_url}
+```
+
+For skills, the fetched frontmatter `name` must match `{skill_name}` (prevents accidental clobber).
+
+### Remove a skill or CLAUDE.md
 
 ```bash
 skill-cli remove {skill_name}
+skill-cli remove claude
 ```
 
 ## Git
@@ -173,9 +201,12 @@ Skills are stored locally in:
 └── meta/               # metadata: name, description, raw_url, installed_at, updated_at
     ├── {skill_name}.json
     ├── {skill_name}.json
-    └── {skill_name}.json
+    ├── {skill_name}.json
+    └── claude.json     # present only if a CLAUDE.md is installed
 └── skills/
     ├── {skill_name}/SKILL.md
     ├── {skill_name}/SKILL.md
     └── {skill_name}/SKILL.md
+└── claude/             # present only if a CLAUDE.md is installed
+    └── CLAUDE.md
 ```
