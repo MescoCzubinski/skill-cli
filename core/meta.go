@@ -48,7 +48,7 @@ func readSkillMeta(name string) (*Skill, error) {
 	return &Skill{
 		Name:        name,
 		Description: meta.Description,
-		RawURL:      meta.RawURL,
+		URL:         meta.URL,
 		InstalledAt: meta.InstalledAt,
 		UpdatedAt:   meta.UpdatedAt,
 	}, nil
@@ -116,7 +116,7 @@ func GetClaudeMeta() (*Skill, error) {
 func SaveSkillsMeta(skills []Skill) error {
 	for _, s := range skills {
 		err := writeSkillMeta(s.Name, SkillMeta{
-			RawURL:      s.RawURL,
+			URL:         s.URL,
 			Description: s.Description,
 			InstalledAt: s.InstalledAt,
 			UpdatedAt:   s.UpdatedAt,
@@ -141,7 +141,7 @@ func GetSkillMeta(name string) (*Skill, error) {
 	return skill, nil
 }
 
-func UpdateSkillMeta(name, description, today, newRawURL string) error {
+func UpdateSkillMeta(name, description, today, newURL string) error {
 	data, err := os.ReadFile(metaPath(name))
 	if os.IsNotExist(err) {
 		return ErrSkillNotFound
@@ -155,10 +155,10 @@ func UpdateSkillMeta(name, description, today, newRawURL string) error {
 	if err != nil {
 		return err
 	}
-	if newRawURL != "" {
-		meta.RawURL = newRawURL
+	if newURL != "" {
+		meta.URL = newURL
 	}
-	if meta.RawURL == "" {
+	if meta.URL == "" {
 		return fmt.Errorf("skill %q was installed from a local file and cannot be updated", name)
 	}
 
@@ -176,10 +176,10 @@ func RemoveSkillMeta(name string) error {
 	return err
 }
 
-func SaveSkillMeta(name, description, rawURL string) error {
+func SaveSkillMeta(name, description, url string) error {
 	today := time.Now().Format("2006-01-02")
 	return writeSkillMeta(name, SkillMeta{
-		RawURL:      rawURL,
+		URL:         url,
 		Description: description,
 		InstalledAt: today,
 		UpdatedAt:   today,

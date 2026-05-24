@@ -34,20 +34,38 @@ func Update(args []string) {
 		}
 	}
 
-	skills := loadSkillsToChange(args[0])
+	skills, claude := loadSkills(args[0])
 	today := time.Now().Format("2006-01-02")
 
 	changed := []string{}
 	hadError := false
-	for i := range skills {
-		didChange, err := updateSkill(&skills[i], today, overrideURL)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "update %s: %v\n", skills[i].Name, err)
+
+	if claude != nil {
+		didChange, err := updateClaude(claude, today, overrideURL)
+		switch {
+		case err != nil:
+			fmt.Fprintf(os.Stderr, "update %s: %v\n", claude.Name, err)
 			hadError = true
-			continue
+		case didChange:
+			fmt.Printf("updated: %s\n", claude.Name)
+			changed = append(changed, claude.Name)
+		default:
+			fmt.Printf("unchanged: %s\n", claude.Name)
 		}
-		if didChange {
-			changed = append(changed, skills[i].Name)
+	}
+
+	for i := range skills {
+		skill := &skills[i]
+		didChange, err := updateSkill(skill, today, overrideURL)
+		switch {
+		case err != nil:
+			fmt.Fprintf(os.Stderr, "update %s: %v\n", skill.Name, err)
+			hadError = true
+		case didChange:
+			fmt.Printf("updated: %s\n", skill.Name)
+			changed = append(changed, skill.Name)
+		default:
+			fmt.Printf("unchanged: %s\n", skill.Name)
 		}
 	}
 
@@ -77,7 +95,7 @@ func Update(args []string) {
 	}
 }
 
-func loadSkillsToChange(arg string) []core.Skill {
+func loadSkills(arg string) ([]core.Skill, *core.Skill) {
 	switch arg {
 	case "--all":
 		skills, err := core.GetSkillsMeta()
@@ -85,77 +103,95 @@ func loadSkillsToChange(arg string) []core.Skill {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+
 		claude, err := core.GetClaudeMeta()
-		if err == nil {
-			skills = append(skills, *claude)
-		} else if !errors.Is(err, core.ErrSkillNotFound) {
+		if err != nil && !errors.Is(err, core.ErrSkillNotFound) {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		return skills
+
+		return skills, claude
 	case "claude":
 		claude, err := core.GetClaudeMeta()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		return []core.Skill{*claude}
+
+		return nil, claude
 	default:
 		skill, err := core.GetSkillMeta(arg)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		return []core.Skill{*skill}
+
+		return []core.Skill{*skill}, nil
 	}
 }
 
+func updateClaude(skill *core.Skill, today, overrideURL string) (bool, error) {
+	ref, err := core.ResolveSource(overrideURL, skill.URL)
+	if err != nil {
+		return false, err
+	}
+	if ref.Type != core.ResourceTypeClaude {
+		return false, fmt.Errorf("source for claude must point at a CLAUDE.md file")
+	}
+
+	files, err := core.FetchSource(ref)
+	if err != nil {
+		return false, err
+	}
+
+	changed, err := core.SaveClaude(files)
+	if err != nil {
+		return false, err
+	}
+
+	err = core.UpdateSkillMeta(skill.Name, claudeDescription, today, overrideURL)
+	if err != nil {
+		return false, err
+	}
+
+	return changed, nil
+}
+
 func updateSkill(skill *core.Skill, today, overrideURL string) (bool, error) {
-	fetchURL := skill.RawURL
-	if overrideURL != "" {
-		fetchURL = overrideURL
+	ref, err := core.ResolveSource(overrideURL, skill.URL)
+	if err != nil {
+		return false, err
 	}
-	if fetchURL == "" {
-		return false, fmt.Errorf("installed from a local file (cannot update)")
+	if ref.Type == core.ResourceTypeClaude {
+		return false, fmt.Errorf("source for skill %q points at a CLAUDE.md file", skill.Name)
 	}
 
-	content, err := core.Fetch(fetchURL)
+	files, err := core.FetchSource(ref)
 	if err != nil {
 		return false, err
 	}
 
-	var description string
-	var changed bool
-	if skill.Name == "claude" {
-		description = claudeDescription
-		changed, err = core.SaveClaudeFile(content)
-		if err != nil {
-			return false, err
-		}
-	} else {
-		parsedName, parsedDesc, parseErr := core.ParseFrontmatter(content)
-		if parseErr != nil {
-			return false, parseErr
-		}
-		if overrideURL != "" && parsedName != skill.Name {
-			return false, fmt.Errorf("fetched skill name %q does not match %q", parsedName, skill.Name)
-		}
-		description = parsedDesc
-		changed, err = core.SaveSkillFile(skill.Name, content)
-		if err != nil {
-			return false, err
-		}
+	skillMD, ok := files["SKILL.md"]
+	if !ok {
+		return false, fmt.Errorf("no SKILL.md found in source")
 	}
 
-	err = core.UpdateSkillMeta(skill.Name, description, today, overrideURL)
+	parsedName, parsedDesc, err := core.ParseFrontmatter(string(skillMD))
+	if err != nil {
+		return false, err
+	}
+	if overrideURL != "" && parsedName != skill.Name {
+		return false, fmt.Errorf("fetched skill name %q does not match %q", parsedName, skill.Name)
+	}
+
+	changed, err := core.SaveSkill(skill.Name, files)
 	if err != nil {
 		return false, err
 	}
 
-	if changed {
-		fmt.Printf("updated: %s\n", skill.Name)
-	} else {
-		fmt.Printf("unchanged: %s\n", skill.Name)
+	err = core.UpdateSkillMeta(skill.Name, parsedDesc, today, overrideURL)
+	if err != nil {
+		return false, err
 	}
 
 	return changed, nil

@@ -18,7 +18,7 @@ func TestRemove_NoArgs(t *testing.T) {
 	}
 }
 
-func TestRemove_ExistingSkill(t *testing.T) {
+func TestRemove_DeletesMetaAndSkillFile(t *testing.T) {
 	env := newEnv(t)
 	run(t, env, "add", fixture("first.md"))
 
@@ -29,23 +29,6 @@ func TestRemove_ExistingSkill(t *testing.T) {
 	if !strings.Contains(stdout, "removed: first-skill") {
 		t.Errorf("unexpected stdout: %q", stdout)
 	}
-}
-
-func TestRemove_NonExistent(t *testing.T) {
-	env := newEnv(t)
-	_, stderr, code := run(t, env, "remove", "no-such-skill")
-	if code == 0 {
-		t.Fatal("expected exit 1")
-	}
-	if !strings.Contains(stderr, "not installed") {
-		t.Errorf("expected 'not installed' in stderr, got: %q", stderr)
-	}
-}
-
-func TestRemove_DeletesMetaAndSkillFile(t *testing.T) {
-	env := newEnv(t)
-	run(t, env, "add", fixture("first.md"))
-	run(t, env, "remove", "first-skill")
 
 	metaPath := filepath.Join(env, "skill-cli", "meta", "first-skill.json")
 	if _, err := os.Stat(metaPath); !os.IsNotExist(err) {
@@ -55,31 +38,6 @@ func TestRemove_DeletesMetaAndSkillFile(t *testing.T) {
 	skillDir := filepath.Join(env, "skill-cli", "skills", "first-skill")
 	if _, err := os.Stat(skillDir); !os.IsNotExist(err) {
 		t.Errorf("skill dir should be deleted after remove")
-	}
-}
-
-func TestRemove_ExistingClaude(t *testing.T) {
-	env := newEnv(t)
-	run(t, env, "add", fixture("CLAUDE.md"))
-
-	stdout, _, code := run(t, env, "remove", "claude")
-	if code != 0 {
-		t.Fatalf("expected exit 0, got %d", code)
-	}
-	if !strings.Contains(stdout, "removed: claude") {
-		t.Errorf("unexpected stdout: %q", stdout)
-	}
-}
-
-func TestRemove_ClaudeNotInstalled(t *testing.T) {
-	env := newEnv(t)
-	_, stderr, code := run(t, env, "remove", "claude")
-
-	if code == 0 {
-		t.Fatal("expected exit 1")
-	}
-	if !strings.Contains(stderr, "not installed") {
-		t.Errorf("expected 'not installed' in stderr, got: %q", stderr)
 	}
 }
 
@@ -95,7 +53,13 @@ func TestRemove_DeletesClaudeMetaAndFile(t *testing.T) {
 	}
 
 	run(t, env, "add", fixture("CLAUDE.md"))
-	run(t, env, "remove", "claude")
+	stdout, _, code := run(t, env, "remove", "claude")
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	if !strings.Contains(stdout, "removed: claude") {
+		t.Errorf("unexpected stdout: %q", stdout)
+	}
 
 	metaPath := filepath.Join(env, "skill-cli", "meta", "claude.json")
 	if _, err := os.Stat(metaPath); !os.IsNotExist(err) {

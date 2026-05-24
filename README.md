@@ -204,8 +204,10 @@ Skills are stored locally in:
     ├── {skill_name}.json
     └── claude.json     # present only if a CLAUDE.md is installed
 └── skills/
-    ├── {skill_name}/SKILL.md
-    ├── {skill_name}/SKILL.md
+    ├── {skill_name}/SKILL.md         # single-file skill
+    ├── {skill_name}                  # multi-file skill
+    │   ├── SKILL.md
+    │   └── {other_file}
     └── {skill_name}/SKILL.md
 └── claude/             # present only if a CLAUDE.md is installed
     └── CLAUDE.md
