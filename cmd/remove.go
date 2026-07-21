@@ -9,15 +9,24 @@ import (
 )
 
 func Remove(args []string) {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: skill-cli remove <name>")
+	positional, f, err := parseFlags(args, map[string]bool{
+		"--no-update": true,
+		"--no-commit": true,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, removeUsage)
+		os.Exit(1)
+	}
+	if len(positional) < 1 {
+		fmt.Fprintln(os.Stderr, removeUsage)
 		os.Exit(1)
 	}
 
-	name := args[0]
+	name := positional[0]
 
 	hasRemote := core.HasRemote()
-	if hasRemote {
+	if hasRemote && !f.noUpdate {
 		err := core.GitPull()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -32,7 +41,7 @@ func Remove(args []string) {
 		removeSkill(name)
 	}
 
-	err := core.SyncSkillFiles()
+	err = core.SyncSkillFiles()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -44,7 +53,7 @@ func Remove(args []string) {
 		os.Exit(1)
 	}
 
-	if hasRemote {
+	if hasRemote && !f.noCommit {
 		err = core.GitPush("remove: " + name)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

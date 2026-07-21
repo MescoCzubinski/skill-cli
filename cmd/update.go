@@ -11,30 +11,41 @@ import (
 )
 
 func Update(args []string) {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: skill-cli update <name>|--all [<url>]")
+	positional, f, err := parseFlags(args, map[string]bool{
+		"--all":       true,
+		"--check":     true,
+		"--no-update": true,
+		"--no-commit": true,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, updateUsage)
 		os.Exit(1)
 	}
 
-	overrideURL := ""
-	if len(args) > 1 {
-		if args[0] == "--all" {
-			fmt.Fprintln(os.Stderr, "cannot pass <url> with --all")
-			os.Exit(1)
-		}
-		overrideURL = args[1]
+	target, overrideURL, err := updateTarget(positional, f.all)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, updateUsage)
+		os.Exit(1)
+	}
+
+	skills := loadSkillsToChange(target)
+
+	if f.check {
+		checkSkills(skills, overrideURL)
+		return
 	}
 
 	hasRemote := core.HasRemote()
-	if hasRemote {
-		err := core.GitPull()
+	if hasRemote && !f.noUpdate {
+		err = core.GitPull()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	}
 
-	skills := loadSkillsToChange(args[0])
 	today := time.Now().Format("2006-01-02")
 
 	changed := []string{}
@@ -51,7 +62,7 @@ func Update(args []string) {
 		}
 	}
 
-	err := core.SyncSkillFiles()
+	err = core.SyncSkillFiles()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -63,7 +74,7 @@ func Update(args []string) {
 		os.Exit(1)
 	}
 
-	if hasRemote && len(changed) > 0 {
+	if hasRemote && !f.noCommit && len(changed) > 0 {
 		msg := "update: " + strings.Join(changed, ", ")
 		err = core.GitPush(msg)
 		if err != nil {
@@ -74,6 +85,24 @@ func Update(args []string) {
 
 	if hadError {
 		os.Exit(1)
+	}
+}
+
+// updateTarget resolves the positional arguments into the skill selector
+// (a name, "claude", or the "--all" sentinel) and an optional override URL.
+func updateTarget(positional []string, all bool) (string, string, error) {
+	switch {
+	case all:
+		if len(positional) > 0 {
+			return "", "", errors.New("cannot pass a name or <url> with --all")
+		}
+		return "--all", "", nil
+	case len(positional) == 0:
+		return "", "", errors.New("a skill name, claude, or --all is required")
+	case len(positional) == 1:
+		return positional[0], "", nil
+	default:
+		return positional[0], positional[1], nil
 	}
 }
 
@@ -159,4 +188,64 @@ func updateSkill(skill *core.Skill, today, overrideURL string) (bool, error) {
 	}
 
 	return changed, nil
+}
+
+// checkSkills fetches each skill's source and reports whether an update is
+// available, without writing anything or touching the git remote. It exits
+// non-zero if any source could not be checked.
+func checkSkills(skills []core.Skill, overrideURL string) {
+	hadError := false
+	for i := range skills {
+		err := checkSkill(&skills[i], overrideURL)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "check %s: %v\n", skills[i].Name, err)
+			hadError = true
+		}
+	}
+	if hadError {
+		os.Exit(1)
+	}
+}
+
+func checkSkill(skill *core.Skill, overrideURL string) error {
+	fetchURL := skill.RawURL
+	if overrideURL != "" {
+		fetchURL = overrideURL
+	}
+	if fetchURL == "" {
+		return fmt.Errorf("installed from a local file (cannot check)")
+	}
+
+	content, err := core.Fetch(fetchURL)
+	if err != nil {
+		return err
+	}
+
+	var changed bool
+	if skill.Name == "claude" {
+		changed, err = core.ClaudeFileChanged(content)
+		if err != nil {
+			return err
+		}
+	} else {
+		parsedName, _, parseErr := core.ParseFrontmatter(content)
+		if parseErr != nil {
+			return parseErr
+		}
+		if overrideURL != "" && parsedName != skill.Name {
+			return fmt.Errorf("fetched skill name %q does not match %q", parsedName, skill.Name)
+		}
+		changed, err = core.SkillFileChanged(skill.Name, content)
+		if err != nil {
+			return err
+		}
+	}
+
+	if changed {
+		fmt.Printf("update available: %s\n", skill.Name)
+	} else {
+		fmt.Printf("up to date: %s\n", skill.Name)
+	}
+
+	return nil
 }

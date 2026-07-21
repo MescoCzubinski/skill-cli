@@ -144,7 +144,6 @@ func TestUpdate_Claude_SwitchURL(t *testing.T) {
 	}
 }
 
-
 func TestUpdate_Skill_WithURL_FetchFailure(t *testing.T) {
 	first := readFixture(t, "first.md")
 	url1 := serveSkill(t, first)
