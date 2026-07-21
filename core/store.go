@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,30 +17,98 @@ var deployTargets = []string{
 	".codex/skills",
 }
 
-func SaveSkillFile(name, content string) (bool, error) {
+func SaveSkill(name string, files map[string][]byte) (bool, error) {
 	dir := filepath.Join(SkillsDir(), name)
-	err := os.MkdirAll(dir, 0755)
+
+	existing, err := readSkillTree(dir)
 	if err != nil {
 		return false, err
 	}
-
-	path := filepath.Join(dir, "SKILL.md")
-	data := []byte(content)
-
-	existing, err := os.ReadFile(path)
-	if err == nil && bytes.Equal(existing, data) {
+	if treesEqual(existing, files) {
 		return false, nil
 	}
-	if err != nil && !os.IsNotExist(err) {
+
+	err = os.RemoveAll(dir)
+	if err != nil {
 		return false, err
 	}
 
-	err = os.WriteFile(path, data, 0644)
+	err = os.MkdirAll(dir, 0755)
 	if err != nil {
 		return false, err
+	}
+
+	for rel, data := range files {
+		cleaned := filepath.Clean(rel)
+		if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "..") {
+			return false, fmt.Errorf("invalid path in skill tree: %q", rel)
+		}
+		isAbs := filepath.IsAbs(cleaned)
+		if isAbs {
+			return false, fmt.Errorf("absolute path in skill tree: %q", rel)
+		}
+		dst := filepath.Join(dir, cleaned)
+		hasParent := strings.HasPrefix(dst, dir+string(filepath.Separator))
+		if !hasParent && dst != dir {
+			return false, fmt.Errorf("path escapes skill dir: %q", rel)
+		}
+
+		err = os.MkdirAll(filepath.Dir(dst), 0755)
+		if err != nil {
+			return false, err
+		}
+		err = os.WriteFile(dst, data, 0644)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	return true, nil
+}
+
+func readSkillTree(dir string) (map[string][]byte, error) {
+	out := map[string][]byte{}
+	err := filepath.WalkDir(dir, func(p string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			if os.IsNotExist(walkErr) && p == dir {
+				return nil
+			}
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(dir, p)
+		if err != nil {
+			return err
+		}
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		out[filepath.ToSlash(rel)] = data
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func treesEqual(a, b map[string][]byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, av := range a {
+		bv, ok := b[k]
+		if !ok {
+			return false
+		}
+		if !bytes.Equal(av, bv) {
+			return false
+		}
+	}
+	return true
 }
 
 func RemoveSkillFile(name string) error {
@@ -59,14 +128,18 @@ func claudeFilePath() string {
 	return filepath.Join(claudeDir(), "CLAUDE.md")
 }
 
-func SaveClaudeFile(content string) (bool, error) {
+func SaveClaude(files map[string][]byte) (bool, error) {
+	data, ok := files["CLAUDE.md"]
+	if !ok {
+		return false, fmt.Errorf("no CLAUDE.md found in source")
+	}
+
 	err := os.MkdirAll(claudeDir(), 0755)
 	if err != nil {
 		return false, err
 	}
 
 	path := claudeFilePath()
-	data := []byte(content)
 
 	existing, err := os.ReadFile(path)
 	if err == nil && bytes.Equal(existing, data) {

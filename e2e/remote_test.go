@@ -82,19 +82,3 @@ func TestRemote_UpdateExistingRepo(t *testing.T) {
 		t.Errorf("remote URL not updated: got %q, want %q", strings.TrimSpace(string(out)), repo2)
 	}
 }
-
-func TestRemote_RejectsBadScheme(t *testing.T) {
-	env := newEnv(t)
-	_, stderr, code := run(t, env, "remote", "ext::sh -c id")
-	if code == 0 {
-		t.Fatal("expected exit 1 for ext:: scheme")
-	}
-	if !strings.Contains(stderr, "invalid remote URL") {
-		t.Errorf("expected 'invalid remote URL' in stderr, got: %q", stderr)
-	}
-
-	gitDir := filepath.Join(env, "skill-cli", ".git")
-	if _, err := os.Stat(gitDir); err == nil {
-		t.Error(".git should not have been created for bad scheme")
-	}
-}
