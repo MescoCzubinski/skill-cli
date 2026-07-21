@@ -74,6 +74,17 @@ skill-cli add ./path/to/SKILL.md
 
 Skills installed from a local file cannot be updated with `skill-cli update` (there is no remote source to fetch from). To replace one, remove it first and re-add it.
 
+#### Multi-file skills
+
+A skill can be more than a single `SKILL.md`. Point `add` at a **directory** — a local folder or a repository `tree` URL — and every file in it is installed, including subdirectories and non-markdown files such as Python scripts, JSON, or data assets (dotfiles and `.git/` are skipped). This is useful for skills that ship helper scripts alongside their instructions.
+
+```bash
+skill-cli add https://github.com/{user}/{repo}/tree/main/skills/{skill_name}
+skill-cli add ./path/to/skill-dir
+```
+
+The directory must contain a `SKILL.md` at its root — its frontmatter `name` becomes the skill name.
+
 ### Add a global CLAUDE.md
 
 Same `add` command — type is detected by basename. The path/URL must end in `/CLAUDE.md`:
