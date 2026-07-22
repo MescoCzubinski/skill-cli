@@ -76,12 +76,20 @@ func TestUpdate_Check_UpdateAvailable_WritesNothing(t *testing.T) {
 	updatedURL := serveSkill(t, updated)
 
 	metaPath := filepath.Join(env, "skill-cli", "meta", "first-skill.json")
-	metaBefore, _ := os.ReadFile(metaPath)
+	metaBefore, err := os.ReadFile(metaPath)
+	if err != nil {
+		t.Fatalf("read meta: %v", err)
+	}
 	rewritten := strings.Replace(string(metaBefore), url, updatedURL, 1)
-	os.WriteFile(metaPath, []byte(rewritten), 0644)
+	if err := os.WriteFile(metaPath, []byte(rewritten), 0644); err != nil {
+		t.Fatalf("rewrite meta: %v", err)
+	}
 
 	skillPath := filepath.Join(env, "skill-cli", "skills", "first-skill", "SKILL.md")
-	fileBefore, _ := os.ReadFile(skillPath)
+	fileBefore, err := os.ReadFile(skillPath)
+	if err != nil {
+		t.Fatalf("read skill file: %v", err)
+	}
 
 	stdout, _, code := run(t, env, "update", "first-skill", "--check")
 	if code != 0 {
@@ -91,11 +99,17 @@ func TestUpdate_Check_UpdateAvailable_WritesNothing(t *testing.T) {
 		t.Errorf("expected 'update available', got: %q", stdout)
 	}
 
-	fileAfter, _ := os.ReadFile(skillPath)
+	fileAfter, err := os.ReadFile(skillPath)
+	if err != nil {
+		t.Fatalf("read skill file after check: %v", err)
+	}
 	if string(fileAfter) != string(fileBefore) {
 		t.Errorf("--check modified the skill file")
 	}
-	metaAfter, _ := os.ReadFile(metaPath)
+	metaAfter, err := os.ReadFile(metaPath)
+	if err != nil {
+		t.Fatalf("read meta after check: %v", err)
+	}
 	if string(metaAfter) != rewritten {
 		t.Errorf("--check modified the meta file")
 	}
@@ -175,7 +189,9 @@ func TestAdd_NoUpdate_SkipsPull(t *testing.T) {
 		t.Fatalf("remote attach failed: %d %q", code, stderr)
 	}
 
-	os.RemoveAll(strings.TrimPrefix(repo, "file://"))
+	if err := os.RemoveAll(strings.TrimPrefix(repo, "file://")); err != nil {
+		t.Fatalf("remove bare remote: %v", err)
+	}
 
 	_, _, code = run(t, env, "add", fixture("second.md"), "--no-commit")
 	if code == 0 {
