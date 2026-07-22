@@ -202,7 +202,7 @@ git remote set-url origin <your-remote-url>
 Before each `add`, `remove`, or `update` (when a remote is configured):
 
 ```
-git pull --rebase
+git pull --rebase --autostash
 ```
 
 After each `add`, `remove`, or `update` (when a remote is configured):
@@ -220,7 +220,7 @@ When a remote is configured, two flags let `add`, `remove`, and `update` opt out
 - `--no-update` skips the pre-op `git pull` (don't sync down from the remote first).
 - `--no-commit` skips the post-op `git commit`/`git push` (don't sync up).
 
-Pass both to run a purely local operation while a remote is attached (e.g. offline, or batching several changes into one later push). Any locally uncommitted changes get swept into the next synced command's commit.
+Pass both to run a purely local operation while a remote is attached (e.g. offline, or batching several changes into one later push). Because the pre-op `git pull` uses `--autostash`, changes you deferred with `--no-commit` are preserved across the next sync and folded into that command's commit.
 
 ```bash
 skill-cli add {url} --no-commit          # install locally, push later

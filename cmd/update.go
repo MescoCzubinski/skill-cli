@@ -37,9 +37,8 @@ func Update(args []string) {
 		os.Exit(1)
 	}
 
-	skills := loadSkillsToChange(target)
-
 	if check {
+		skills := loadSkillsToChange(target)
 		checkSkills(skills, overrideURL)
 		return
 	}
@@ -53,6 +52,7 @@ func Update(args []string) {
 		}
 	}
 
+	skills := loadSkillsToChange(target)
 	today := time.Now().Format("2006-01-02")
 
 	changed := []string{}
@@ -106,8 +106,10 @@ func updateTarget(positional []string, all bool) (string, string, error) {
 		return "", "", errors.New("a skill name, claude, or --all is required")
 	case len(positional) == 1:
 		return positional[0], "", nil
-	default:
+	case len(positional) == 2:
 		return positional[0], positional[1], nil
+	default:
+		return "", "", errors.New("too many arguments")
 	}
 }
 

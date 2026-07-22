@@ -190,3 +190,76 @@ func TestAdd_NoUpdate_SkipsPull(t *testing.T) {
 		t.Errorf("expected 'added: second-skill', got: %q", stdout)
 	}
 }
+
+func TestNoCommit_DeferredThenDefaultSyncs(t *testing.T) {
+	repo := localBareRepo(t)
+	url := serveSkill(t, readFixture(t, "first.md"))
+
+	env := newEnv(t)
+	run(t, env, "add", url)
+	_, stderr, code := run(t, env, "remote", repo)
+	if code != 0 {
+		t.Fatalf("remote attach failed: %d %q", code, stderr)
+	}
+
+	_, stderr, code = run(t, env, "remove", "first-skill", "--no-commit")
+	if code != 0 {
+		t.Fatalf("remove --no-commit failed: %d %q", code, stderr)
+	}
+
+	stdout, stderr, code := run(t, env, "add", fixture("second.md"))
+	if code != 0 {
+		t.Fatalf("default add after deferred change failed: %d %q %q", code, stdout, stderr)
+	}
+
+	envB := newEnv(t)
+	_, stderr, code = run(t, envB, "remote", repo)
+	if code != 0 {
+		t.Fatalf("fresh remote pull failed: %d %q", code, stderr)
+	}
+	if _, err := os.Stat(filepath.Join(envB, "skill-cli", "skills", "second-skill", "SKILL.md")); err != nil {
+		t.Errorf("second skill should have been pushed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(envB, "skill-cli", "skills", "first-skill", "SKILL.md")); !os.IsNotExist(err) {
+		t.Errorf("deferred removal of first skill should have been pushed")
+	}
+}
+
+func TestUpdate_All_IncludesPulledSkill(t *testing.T) {
+	repo := localBareRepo(t)
+	url1 := serveSkill(t, readFixture(t, "first.md"))
+	url2 := serveSkill(t, readFixture(t, "second.md"))
+
+	envA := newEnv(t)
+	run(t, envA, "add", url1)
+	_, stderr, code := run(t, envA, "remote", repo)
+	if code != 0 {
+		t.Fatalf("envA remote attach failed: %d %q", code, stderr)
+	}
+
+	envB := newEnv(t)
+	run(t, envB, "add", url2)
+	_, stderr, code = run(t, envB, "remote", repo)
+	if code != 0 {
+		t.Fatalf("envB remote attach failed: %d %q", code, stderr)
+	}
+
+	stdout, stderr, code := run(t, envA, "update", "--all")
+	if code != 0 {
+		t.Fatalf("update --all failed: %d %q %q", code, stdout, stderr)
+	}
+	if !strings.Contains(stdout, "second-skill") {
+		t.Errorf("update --all should include the pulled second-skill, got: %q", stdout)
+	}
+}
+
+func TestUpdate_TooManyArgs(t *testing.T) {
+	env := newEnv(t)
+	_, stderr, code := run(t, env, "update", "first-skill", "http://example.com", "extra")
+	if code == 0 {
+		t.Fatal("expected exit 1 for too many arguments")
+	}
+	if !strings.Contains(stderr, "usage:") {
+		t.Errorf("expected usage in stderr, got: %q", stderr)
+	}
+}

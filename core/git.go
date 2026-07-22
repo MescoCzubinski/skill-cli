@@ -232,7 +232,7 @@ func GitPull() error {
 	}
 
 	dir := ConfigDir()
-	out, err := exec.Command("git", "-C", dir, "pull", "--rebase", "origin", "main").CombinedOutput()
+	out, err := exec.Command("git", "-C", dir, "pull", "--rebase", "--autostash", "origin", "main").CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("git pull failed: %w\n%s", err, out)
 	}
