@@ -95,8 +95,6 @@ func Update(args []string) {
 	}
 }
 
-// updateTarget resolves the positional arguments into the skill selector
-// (a name, "claude", or the "--all" sentinel) and an optional override URL.
 func updateTarget(positional []string, all bool) (string, string, error) {
 	switch {
 	case all:
@@ -197,9 +195,6 @@ func updateSkill(skill *core.Skill, today, overrideURL string) (bool, error) {
 	return changed, nil
 }
 
-// checkSkills fetches each skill's source and reports whether an update is
-// available, without writing anything or touching the git remote. It exits
-// non-zero if any source could not be checked.
 func checkSkills(skills []core.Skill, overrideURL string) {
 	hadError := false
 	for i := range skills {

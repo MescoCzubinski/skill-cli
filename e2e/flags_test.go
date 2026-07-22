@@ -7,8 +7,6 @@ import (
 	"testing"
 )
 
-// ---- global --list / -l shortcut ----
-
 func TestFlag_ListShortcut(t *testing.T) {
 	env := newEnv(t)
 	run(t, env, "add", fixture("first.md"))
@@ -23,8 +21,6 @@ func TestFlag_ListShortcut(t *testing.T) {
 		}
 	}
 }
-
-// ---- help ----
 
 func TestFlag_Help(t *testing.T) {
 	env := newEnv(t)
@@ -42,8 +38,6 @@ func TestFlag_Help(t *testing.T) {
 	}
 }
 
-// ---- unknown flag ----
-
 func TestFlag_Unknown(t *testing.T) {
 	env := newEnv(t)
 	_, stderr, code := run(t, env, "add", "--bogus", fixture("first.md"))
@@ -54,8 +48,6 @@ func TestFlag_Unknown(t *testing.T) {
 		t.Errorf("expected 'unknown flag' in stderr, got: %q", stderr)
 	}
 }
-
-// ---- update --check ----
 
 func TestUpdate_Check_UpToDate(t *testing.T) {
 	content := readFixture(t, "first.md")
@@ -99,12 +91,10 @@ func TestUpdate_Check_UpdateAvailable_WritesNothing(t *testing.T) {
 		t.Errorf("expected 'update available', got: %q", stdout)
 	}
 
-	// --check must not write the skill file...
 	fileAfter, _ := os.ReadFile(skillPath)
 	if string(fileAfter) != string(fileBefore) {
 		t.Errorf("--check modified the skill file")
 	}
-	// ...nor bump the meta's updated_at.
 	metaAfter, _ := os.ReadFile(metaPath)
 	if string(metaAfter) != rewritten {
 		t.Errorf("--check modified the meta file")
@@ -143,8 +133,6 @@ func TestUpdate_Check_LocalSkillFails(t *testing.T) {
 	}
 }
 
-// ---- --no-commit / --no-update git gating ----
-
 func TestAdd_NoCommit_SkipsPush(t *testing.T) {
 	repo := localBareRepo(t)
 
@@ -155,7 +143,6 @@ func TestAdd_NoCommit_SkipsPush(t *testing.T) {
 		t.Fatalf("remote attach failed: %d %q", code, stderr)
 	}
 
-	// Add a second skill locally but keep it out of the remote.
 	stdout, stderr, code := run(t, envA, "add", fixture("second.md"), "--no-commit")
 	if code != 0 {
 		t.Fatalf("add --no-commit failed: %d %q %q", code, stdout, stderr)
@@ -165,7 +152,6 @@ func TestAdd_NoCommit_SkipsPush(t *testing.T) {
 		t.Errorf("second skill should exist locally: %v", err)
 	}
 
-	// A fresh clone via `remote` should see first-skill but not second-skill.
 	envB := newEnv(t)
 	_, stderr, code = run(t, envB, "remote", repo)
 	if code != 0 {
@@ -189,16 +175,13 @@ func TestAdd_NoUpdate_SkipsPull(t *testing.T) {
 		t.Fatalf("remote attach failed: %d %q", code, stderr)
 	}
 
-	// Make the remote unreachable so any `git pull` would fail.
 	os.RemoveAll(strings.TrimPrefix(repo, "file://"))
 
-	// Without skipping the pull, add fails because the remote is gone.
 	_, _, code = run(t, env, "add", fixture("second.md"), "--no-commit")
 	if code == 0 {
 		t.Fatal("expected exit 1 when pull hits a missing remote")
 	}
 
-	// --no-update skips the pull, so the local add still succeeds.
 	stdout, stderr, code := run(t, env, "add", fixture("second.md"), "--no-update", "--no-commit")
 	if code != 0 {
 		t.Fatalf("add --no-update --no-commit failed: %d %q %q", code, stdout, stderr)

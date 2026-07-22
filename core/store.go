@@ -42,8 +42,6 @@ func SaveSkillFile(name, content string) (bool, error) {
 	return true, nil
 }
 
-// SkillFileChanged reports whether content differs from the installed SKILL.md
-// for name. A missing file counts as changed.
 func SkillFileChanged(name, content string) (bool, error) {
 	path := filepath.Join(SkillsDir(), name, "SKILL.md")
 	existing, err := os.ReadFile(path)
@@ -99,8 +97,6 @@ func SaveClaudeFile(content string) (bool, error) {
 	return true, nil
 }
 
-// ClaudeFileChanged reports whether content differs from the installed
-// CLAUDE.md. A missing file counts as changed.
 func ClaudeFileChanged(content string) (bool, error) {
 	existing, err := os.ReadFile(claudeFilePath())
 	if os.IsNotExist(err) {
