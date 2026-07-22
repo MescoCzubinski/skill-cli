@@ -10,8 +10,10 @@ import (
 	"github.com/MescoCzubinski/skill-cli/core"
 )
 
+const updateUsage = "usage: skill-cli update <name>|claude|--all [<url>] [--check] [--no-update] [--no-commit]"
+
 func Update(args []string) {
-	positional, f, err := parseFlags(args, map[string]bool{
+	positional, flags, err := core.ParseFlags(args, map[string]bool{
 		"--all":       true,
 		"--check":     true,
 		"--no-update": true,
@@ -23,7 +25,12 @@ func Update(args []string) {
 		os.Exit(1)
 	}
 
-	target, overrideURL, err := updateTarget(positional, f.all)
+	all := flags["--all"]
+	check := flags["--check"]
+	noUpdate := flags["--no-update"]
+	noCommit := flags["--no-commit"]
+
+	target, overrideURL, err := updateTarget(positional, all)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		fmt.Fprintln(os.Stderr, updateUsage)
@@ -32,13 +39,13 @@ func Update(args []string) {
 
 	skills := loadSkillsToChange(target)
 
-	if f.check {
+	if check {
 		checkSkills(skills, overrideURL)
 		return
 	}
 
 	hasRemote := core.HasRemote()
-	if hasRemote && !f.noUpdate {
+	if hasRemote && !noUpdate {
 		err = core.GitPull()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -74,7 +81,7 @@ func Update(args []string) {
 		os.Exit(1)
 	}
 
-	if hasRemote && !f.noCommit && len(changed) > 0 {
+	if hasRemote && !noCommit && len(changed) > 0 {
 		msg := "update: " + strings.Join(changed, ", ")
 		err = core.GitPush(msg)
 		if err != nil {

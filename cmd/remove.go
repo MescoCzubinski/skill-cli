@@ -8,8 +8,10 @@ import (
 	"github.com/MescoCzubinski/skill-cli/core"
 )
 
+const removeUsage = "usage: skill-cli remove <name>|claude [--no-update] [--no-commit]"
+
 func Remove(args []string) {
-	positional, f, err := parseFlags(args, map[string]bool{
+	positional, flags, err := core.ParseFlags(args, map[string]bool{
 		"--no-update": true,
 		"--no-commit": true,
 	})
@@ -24,9 +26,11 @@ func Remove(args []string) {
 	}
 
 	name := positional[0]
+	noUpdate := flags["--no-update"]
+	noCommit := flags["--no-commit"]
 
 	hasRemote := core.HasRemote()
-	if hasRemote && !f.noUpdate {
+	if hasRemote && !noUpdate {
 		err := core.GitPull()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -53,7 +57,7 @@ func Remove(args []string) {
 		os.Exit(1)
 	}
 
-	if hasRemote && !f.noCommit {
+	if hasRemote && !noCommit {
 		err = core.GitPush("remove: " + name)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

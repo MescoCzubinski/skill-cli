@@ -14,8 +14,10 @@ import (
 
 const claudeDescription = "global CLAUDE.md file"
 
+const addUsage = "usage: skill-cli add <url|path> [--no-update] [--no-commit]"
+
 func Add(args []string) {
-	positional, f, err := parseFlags(args, map[string]bool{
+	positional, flags, err := core.ParseFlags(args, map[string]bool{
 		"--no-update": true,
 		"--no-commit": true,
 	})
@@ -29,8 +31,11 @@ func Add(args []string) {
 		os.Exit(1)
 	}
 
+	noUpdate := flags["--no-update"]
+	noCommit := flags["--no-commit"]
+
 	hasRemote := core.HasRemote()
-	if hasRemote && !f.noUpdate {
+	if hasRemote && !noUpdate {
 		err := core.GitPull()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -61,7 +66,7 @@ func Add(args []string) {
 		os.Exit(1)
 	}
 
-	if hasRemote && !f.noCommit {
+	if hasRemote && !noCommit {
 		err = core.GitPush("add: " + name)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
