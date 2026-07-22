@@ -47,7 +47,7 @@ go build -o skill-cli .
 ## Usage
 
 ```
-skill-cli <command> [args]
+skill-cli <command> [args] [flags]
 
 Commands:
   add     <url|path>                     Install a skill or CLAUDE.md from a URL or local file
@@ -56,6 +56,13 @@ Commands:
   update  <name>|claude|--all            Re-fetch and update skill(s) or CLAUDE.md
   update  <name> [<url>]|claude [<url>]  Switch the source URL and re-fetch
   remote  <url>                          Attach a git remote for sync
+
+Flags:
+  --list, -l                             Shortcut for `list` (skill-cli --list)
+  --check                                (update) Report available updates without writing anything
+  --no-update                            (add/remove/update) Skip the pre-op `git pull`
+  --no-commit                            (add/remove/update) Skip the post-op commit + push
+  --help, -h                             Show usage
 ```
 
 ### Add a skill
@@ -119,6 +126,20 @@ skill-cli update claude {new_url}
 
 For skills, the fetched frontmatter `name` must match `{skill_name}` (prevents accidental clobber).
 
+#### Check for updates
+
+Pass `--check` to see which skills have a newer version upstream without changing anything on disk (no files written, no git pull/commit):
+
+```bash
+skill-cli update --all --check
+skill-cli update {skill_name} --check
+```
+
+```
+up to date: some-skill
+update available: another-skill
+```
+
 ### Remove a skill or CLAUDE.md
 
 ```bash
@@ -181,7 +202,7 @@ git remote set-url origin <your-remote-url>
 Before each `add`, `remove`, or `update` (when a remote is configured):
 
 ```
-git pull --rebase
+git pull --rebase --autostash
 ```
 
 After each `add`, `remove`, or `update` (when a remote is configured):
@@ -190,6 +211,20 @@ After each `add`, `remove`, or `update` (when a remote is configured):
 git add .
 git commit -m "<add|remove|update>: <name>"
 git push -u origin HEAD
+```
+
+#### Skipping sync
+
+When a remote is configured, two flags let `add`, `remove`, and `update` opt out of part of the sync:
+
+- `--no-update` skips the pre-op `git pull` (don't sync down from the remote first).
+- `--no-commit` skips the post-op `git commit`/`git push` (don't sync up).
+
+Pass both to run a purely local operation while a remote is attached (e.g. offline, or batching several changes into one later push). Because the pre-op `git pull` uses `--autostash`, changes you deferred with `--no-commit` are preserved across the next sync and folded into that command's commit.
+
+```bash
+skill-cli add {url} --no-commit          # install locally, push later
+skill-cli update --all --no-update       # refresh from source without pulling first
 ```
 
 ## Storage

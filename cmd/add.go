@@ -14,14 +14,28 @@ import (
 
 const claudeDescription = "global CLAUDE.md file"
 
+const addUsage = "usage: skill-cli add <url|path> [--no-update] [--no-commit]"
+
 func Add(args []string) {
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "usage: skill-cli add <url|path>")
+	positional, flags, err := core.ParseFlags(args, map[string]bool{
+		"--no-update": true,
+		"--no-commit": true,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, addUsage)
+		os.Exit(1)
+	}
+	if len(positional) < 1 {
+		fmt.Fprintln(os.Stderr, addUsage)
 		os.Exit(1)
 	}
 
+	noUpdate := flags["--no-update"]
+	noCommit := flags["--no-commit"]
+
 	hasRemote := core.HasRemote()
-	if hasRemote {
+	if hasRemote && !noUpdate {
 		err := core.GitPull()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -29,7 +43,7 @@ func Add(args []string) {
 		}
 	}
 
-	basename, content, rawURL := loadSource(args[0])
+	basename, content, rawURL := loadSource(positional[0])
 
 	var name string
 	switch basename {
@@ -40,7 +54,7 @@ func Add(args []string) {
 		name = addSkill(content, rawURL)
 	}
 
-	err := core.SyncSkillFiles()
+	err = core.SyncSkillFiles()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -52,7 +66,7 @@ func Add(args []string) {
 		os.Exit(1)
 	}
 
-	if hasRemote {
+	if hasRemote && !noCommit {
 		err = core.GitPush("add: " + name)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

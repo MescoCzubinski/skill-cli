@@ -42,6 +42,19 @@ func SaveSkillFile(name, content string) (bool, error) {
 	return true, nil
 }
 
+func SkillFileChanged(name, content string) (bool, error) {
+	path := filepath.Join(SkillsDir(), name, "SKILL.md")
+	existing, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return !bytes.Equal(existing, []byte(content)), nil
+}
+
 func RemoveSkillFile(name string) error {
 	err := os.RemoveAll(filepath.Join(SkillsDir(), name))
 	if err != nil && !os.IsNotExist(err) {
@@ -82,6 +95,18 @@ func SaveClaudeFile(content string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func ClaudeFileChanged(content string) (bool, error) {
+	existing, err := os.ReadFile(claudeFilePath())
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+
+	return !bytes.Equal(existing, []byte(content)), nil
 }
 
 func RemoveClaudeFile() error {
